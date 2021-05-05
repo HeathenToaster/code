@@ -1,0 +1,39 @@
+Position file name: C:\Users\Robbe\Desktop\AET\20210426\RatF00\Experiments\RatF00_2021_04_26_13_23_30\RatF00_2021_04_26_13_23_30.position
+Made with Version 3.0
+Protocole: ..................
+
+acqPer 25
+sessionDuration 3600
+
+Valve open time 
+openLeft 80
+openRight 200
+
+Quantity of water:
+waterLeft  0.7400
+waterRight 0.7200
+cupWeight  0.6010
+
+Size treadmill/Boundaries:
+treadmillSize 120
+boundaryLeft   380
+boundaryRight 880
+
+Rat Weight:
+lastDayadlib 2021_03_22
+ratWeight 240
+ratWeightadlib 300
+
+Blocks // ON block Duration // OFF block duration // Repeat block // % reward ON // % reward OFF // Treadmill speed 
+Block 1:       300       300         1        90        10         0
+Block 2:       300       300         1        90        10         0
+Block 3:       0       0         1        0        0         0
+Block 4:       0       0         1        0        0         0
+Block 5:       0       0         1        0        0         0
+Block 6:       0       0         1        0        0         0
+Block 7:         0         0         1         0         0         0
+Block 8:         0         0         1         0         0         0
+Block 9:         0         0         1         0         0         0
+Block 10:         0         0         1         0         0         0
+Block 11:         0         0         1         0         0         0
+Block 12:         0         0         1         0         0         0
