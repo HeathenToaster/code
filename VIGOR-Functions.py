@@ -35,8 +35,6 @@ startTimeNotebook = datetime.datetime.now()
 
 # conversion
 def inch2cm(value): return value / 2.54
-
-
 def cm2inch(value): return value * 2.54
 
 
@@ -342,6 +340,7 @@ def randomsession(animal):
     list = [session for session in sessionlist if animal == session[0:6]]
     return(list)
 
+
 # in action sequence, get block number based on beginning of action 
 def get_block(t_0):
     if 0 <= t_0 <= 300:
@@ -368,6 +367,8 @@ def get_block(t_0):
         block = 10
     elif 3300 < t_0 <= 3600:
         block = 11
+    elif 0 > t_0:
+        block = None
     return block
 
 
@@ -637,24 +638,28 @@ def plot_acc(animal, session, posdataRight, timedataRight, bounds,
 
 
 # plot per block
-def plot_figBin(data, rewardProbaBlock, blocks, barplotaxes, color,
-                xyLabels=[" ", " ", " ", " "], title=[None], linewidth=1):
+def plot_figBin(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
+                xyLabels=[" ", " ", " ", " "], title=[None], linewidth=1, scatter=False, ax=None):
     warnings.simplefilter("ignore", category=RuntimeWarning)
-    binplot = plt.gca()
+    
+    if ax is None:
+        binplot = plt.gca()
+    else:
+        binplot = ax
+
     for i in range(0, len(blocks)):
-        plt.axvspan(blocks[i][0]/60, blocks[i][1]/60, color='grey',
-                    alpha=rewardProbaBlock[i]/250,
-                    label="%reward: " + str(rewardProbaBlock[i])
-                    if (i == 0 or i == 1) else "")
-        plt.scatter(np.full((1, 1), (blocks[i][1] + blocks[i][0])/120),
-                    data[i], s=50, color=color[0])
-        for i in range(0, len(blocks)-1):
-            plt.plot(((blocks[i][1] + blocks[i][0])/120,
-                      (blocks[i+1][1] + blocks[i+1][0])/120),
-                     (data[i], data[i+1]), color=color[0], linewidth=1)
+        binplot.axvspan(blocks[i][0]/60, blocks[i][1]/60, color='grey', alpha=rewardProbaBlock[i]/250, label="%reward: " + str(rewardProbaBlock[i]) if (i == 0 or i == 1) else "")
+        if scatter:
+            binplot.scatter(np.random.normal(((blocks[i][1] + blocks[i][0])/120), 1, len(data[i])), data[i], s=5, color=color[0])
+
+    if stat == "Avg. ":
+        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.mean(data[i]) for i in range(0, len(blocks))], marker='o', mec='k', mew=1,  ms=7, linewidth=2, color=color[0])
+    elif stat == "Med. ":
+        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], marker='o', mec='k', mew=1, ms=7, linewidth=2, color=color[0])
+
     binplot.set_title(title[0], fontsize=title[1])
     binplot.set_xlabel(xyLabels[0], fontsize=xyLabels[2])
-    binplot.set_ylabel(xyLabels[1], fontsize=xyLabels[2])
+    binplot.set_ylabel(stat + xyLabels[1], fontsize=xyLabels[2])
     binplot.set_xlim([barplotaxes[0], barplotaxes[1]])
     binplot.set_ylim([barplotaxes[2], barplotaxes[3]])
     binplot.spines['bottom'].set_linewidth(linewidth[0])
@@ -1672,7 +1677,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
                                        "lastDayadlib": read_params(root, animal, session, "lastDayadlib"),
                                        "lickthresholdLeft": read_params(root, animal, session, "lickthresholdLeft"),  # added in Labview 2021/07/06. Now uses the custom lickthreshold for each side. Useful when lickdata baseline drifts and value is directly changed in LV. Only one session might be bugged, so this parameter is session specific. Before, the default value (300) was used and modified manually during the analysis.
                                        "lickthresholdRight": read_params(root, animal, session, "lickthresholdRight"),
-                                       "realEnd": str(read_params(root, animal, session, "ClockStop")), 
+                                       "realEnd": str(read_params(root, animal, session, "ClockStop")),
                                        "brainstatus": read_params(root, animal, session, "brainstatus", valueType="other")}
 
             # initialize boundaries to be computed later using the KDE function
@@ -1726,6 +1731,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
                     treadmillSpeed.append(block[5])
                     treadmillSpeed.append(block[5])
             params[animal, session]["blocks"], params[animal, session]["rewardP_ON"], params[animal, session]["rewardP_OFF"], params[animal, session]["treadmillSpeed"], params[animal, session]['rewardProbaBlock'] = blocks, rewardP_ON, rewardP_OFF, treadmillSpeed, rewardProbaBlock
+            
             # Extract data for each .position file generated from LabView
             # Data loaded : time array, position of the animal X and Y axis, Licks to the left and to the right, and frame number
             extractTime[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[3])  # old format = 5
@@ -1795,7 +1801,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             elif watL > watR:
                 water[animal, session] = ["Big Reward", "Small Reward", 5, 1]  # print(session, "::", watL, watR, "     bigL")
             else:
-                print(session, "error, bypass? Y/N")
+                water[animal, session] = ["r", "r", 1, 1]
 
             # Compute boundaries
             border = 5  # define arbitrary border
@@ -1867,7 +1873,9 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             d = {}
             for item, (j, t, o, p) in enumerate(zip(full, fulltime, openings, positions)):
                 proba = split_a_list_at_zeros(o)[0][0] if np.any(split_a_list_at_zeros(o)) else 100
+                #     #action start time        #run or stay       #get reward (1) or not (0)                                                        #action duration       #dist/time=avg speed if run 
                 d[item] = t[0], "run" if j[0] == True else "stay", 1 if proba < params[animal, session]['rewardProbaBlock'][get_block(t[0])] else 0, t[-1] - t[0], (p[-1] - p[0])/(t[-1] - t[0]) if j[0] == True else "wait"
+
 
         if os.path.exists(figPath) and (not redoFig):
             if printFigs == True:
@@ -1986,14 +1994,15 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
                 ax65 = distribution_plot(lick_waitRight[animal, session], lick_waitLeft[animal, session], barplotaxes=[0, 100, 0, 1], maxminstepbin=[0, 100, 1], scatterplotaxes=[0.5, 2.5, 0, 10], color=['moccasin', 'darkorange', 'tomato', 'darkred'], xyLabels=["Time (s)", "Zone", "In Right" + "\n" + water[animal, session][1], "In Left" + "\n" + water[animal, session][0], 14, 12], title=["Distribution of postDrink Time", 16], linewidth=[1.5], legend=["In Right", "In Left", " ", " "])
 
                 if len(params[animal, session]['blocks']) > 1:
+                    stat = "Med. "
                     ax70 = fig.add_subplot(gs[63:70, 0:9])
-                    ax70 = plot_figBin([nb_runsBin[animal, session][i]/(int((blocks[i][1]-blocks[i][0])/60)) for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 25], color=['k'], xyLabels=["Time (min)", "\u0023 runs / min", 14, 12], title=["", 16], linewidth=[1.5])
+                    ax70 = plot_figBin([nb_runsBin[animal, session][i]/(int((blocks[i][1]-blocks[i][0])/60)) for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 25], color=['k'], xyLabels=["Time (min)", "\u0023 runs / min", 14, 12], title=["", 16], linewidth=[1.5], stat=stat)
                     ax72 = fig.add_subplot(gs[63:70, 20:29])
-                    ax72 = plot_figBin([np.mean(speedRunToLeftBin[animal, session][i] + speedRunToRightBin[animal, session][i]) for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 100], color=['dodgerblue'], xyLabels=["Time (min)", "Avg. run speed (cm/s)", 14, 12], title=["", 16], linewidth=[1.5])
+                    ax72 = plot_figBin([speedRunToLeftBin[animal, session][i] + speedRunToRightBin[animal, session][i] for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 100], color=['dodgerblue'], xyLabels=["Time (min)", "Avg. run speed (cm/s)", 14, 12], title=["", 16], linewidth=[1.5], scatter=True, stat=stat)
                     ax74 = fig.add_subplot(gs[63:70, 40:49])
-                    ax74 = plot_figBin([np.mean(maxSpeedRightBin[animal, session][i] + maxSpeedLeftBin[animal, session][i]) for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 150], color=['red'], xyLabels=["Time (min)", "Average max speed (cm/s)", 14, 12], title=["", 16], linewidth=[1.5])
+                    ax74 = plot_figBin([maxSpeedRightBin[animal, session][i] + maxSpeedLeftBin[animal, session][i] for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 150], color=['red'], xyLabels=["Time (min)", "Average max speed (cm/s)", 14, 12], title=["", 16], linewidth=[1.5], scatter=True, stat=stat)
                     ax76 = fig.add_subplot(gs[63:70, 60:69])
-                    ax76 = plot_figBin([np.mean(timeStayInLeftBin[animal, session][i] + timeStayInRightBin[animal, session][i]) for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 25], color=['orange'], xyLabels=["Time (min)", "Avg. time in sides (s)", 14, 12], title=["", 16], linewidth=[1.5])
+                    ax76 = plot_figBin([timeStayInLeftBin[animal, session][i] + timeStayInRightBin[animal, session][i] for i in range(0, len(blocks))], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration']/60, 0, 25], color=['orange'], xyLabels=["Time (min)", "Avg. time in sides (s)", 14, 12], title=["", 16], linewidth=[1.5], scatter=True, stat=stat)
 
                     ax71 = fig.add_subplot(gs[63:70, 10:15])
                     ax71 = plot_figBinMean(ax71, [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([nb_runsBin[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([nb_runsBin[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))], color=['k'], ylim=(0, 25))
@@ -2532,7 +2541,7 @@ class SampleSet:
         self.l = l
         self.filtix = np.intersect1d(lenix,disix)
 
-    def getAvg(self, dismax, lenlim, eps):
+    def getAvg(self, dismax, lenlim, eps):  # median
         self.eps = eps
         self.endpoints()        
         self.getFiltered(dismax, lenlim)
@@ -2605,10 +2614,10 @@ def compute_median_trajectory(posdataRight, timedataRight):
     data = list(zip([t - t[0] for t in timedataRight], posdataRight))
 
     ss = SampleSet(data)
-    ss.getAvg(zmax, lenlim, eps) # not supposed to do anything but has to be here to work ???????
+    ss.getAvg(zmax, lenlim, eps) # not supposed to do anything but has to be here to work ??????? Therefore, no touchy. 
     X, Y = ss.getAvg(zmax, lenlim, eps)
 
-    # Here median computation warps time (~Dynamic Time Warping) so interpolate to get back to 0.04s timestamps.
+    # Here median computation warps time (~Dynamic Time Warping) so interpolate to get back to 0.04s increments.
     interpTime = np.linspace(X[0], X[-1], int(X[-1]/0.04)+1) # create time from 0 to median arrival time, evenly spaced 0.04s
     interpPos = np.interp(interpTime, X, Y) # interpolate the position at interpTime
     return interpTime, interpPos
