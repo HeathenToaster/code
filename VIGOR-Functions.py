@@ -140,7 +140,8 @@ def FIXwrite_params(root, animal, session):
     # for session in sorted(matchsession(animal, lesionrev20+lesionrev10+lesionrev2+lesion2+lesion10+lesion20)): #lesiontrain+lesion60+lesion90+lesion120
     #     FIXwrite_params(root, animal, session)
     behav = root + os.sep+animal + os.sep+"Experiments" + os.sep + session + os.sep + session + ".behav_param"
-    if not os.path.exists(behav): print("No file %s" % behav)
+    if not os.path.exists(behav):
+        print("No file %s" % behav)
     alreadywritten=False
     with open(behav, "r") as f:
         for line in f:
@@ -639,23 +640,21 @@ def plot_acc(animal, session, posdataRight, timedataRight, bounds,
 
 # plot per block
 def plot_figBin(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
-                xyLabels=[" ", " ", " ", " "], title=[None], linewidth=1, scatter=False, ax=None):
+                xyLabels=[" ", " ", " ", " "], title=[None], linewidth=1, scatter=False, binplot=False):
     warnings.simplefilter("ignore", category=RuntimeWarning)
-    
-    if ax is None:
+    if not binplot:
         binplot = plt.gca()
-    else:
-        binplot = ax
-
     for i in range(0, len(blocks)):
         binplot.axvspan(blocks[i][0]/60, blocks[i][1]/60, color='grey', alpha=rewardProbaBlock[i]/250, label="%reward: " + str(rewardProbaBlock[i]) if (i == 0 or i == 1) else "")
         if scatter:
             binplot.scatter(np.random.normal(((blocks[i][1] + blocks[i][0])/120), 1, len(data[i])), data[i], s=5, color=color[0])
 
     if stat == "Avg. ":
-        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.mean(data[i]) for i in range(0, len(blocks))], marker='o', mec='k', mew=1,  ms=7, linewidth=2, color=color[0])
+        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.mean(data[i]) for i in range(0, len(blocks))], marker='o', ms=7, linewidth=2, color=color[0])
+        binplot.errorbar([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], yerr=[stats.sem(data[i]) for i in range(0, len(blocks))], fmt='o', color=color[0], ecolor='black', elinewidth=1, capsize=0);
     elif stat == "Med. ":
-        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], marker='o', mec='k', mew=1, ms=7, linewidth=2, color=color[0])
+        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], marker='o', ms=7, linewidth=2, color=color[0])
+        binplot.errorbar([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], yerr=[stats.sem(data[i]) for i in range(0, len(blocks))], fmt='o', color=color[0], ecolor='black', elinewidth=1, capsize=3);
 
     binplot.set_title(title[0], fontsize=title[1])
     binplot.set_xlabel(xyLabels[0], fontsize=xyLabels[2])
@@ -694,6 +693,7 @@ def plot_figBinMean(ax, dataLeft, dataRight, color, ylim):
     ax.axvspan(-0.5, 0.5, color='grey', alpha=10/250)
     ax.axvspan(0.5, 1.5, color='grey', alpha=90/250)
     return ax
+
 
 # separate data by condition
 def separate_data(animal_list, session_list, dataLeft, dataRight, experiment, params, datatype, bin):
@@ -935,10 +935,11 @@ def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, ex
         for animal in animal_list:
             if datatype == 'runningtime':
                 realdist60, realdist90, realdist120 = ticks[2]
-                x = (np.mean(realdist60[animal]), np.mean(realdist90[animal]), np.mean(realdist120[animal]))
-                ax.set_xticks([int(np.mean([np.mean(realdist60[animal]) for animal in animal_list])),
-                               int(np.mean([np.mean(realdist90[animal]) for animal in animal_list])),
-                               int(np.mean([np.mean(realdist120[animal]) for animal in animal_list]))])
+                x = (np.nanmean(realdist60[animal]), np.nanmean(realdist90[animal]), np.nanmean(realdist120[animal]))
+                # ax.set_xticks([int(np.nanmean([np.nanmean(realdist60[animal]) for animal in animal_list])),
+                #                int(np.nanmean([np.nanmean(realdist90[animal]) for animal in animal_list])),
+                #                int(np.nanmean([np.nanmean(realdist120[animal]) for animal in animal_list]))])
+                ax.set_xlim(plot_axes[0], plot_axes[1])
             else:
                 x = (60, 90, 120)
 
@@ -959,10 +960,10 @@ def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, ex
 
             if plot == "90%":
                 ax.plot(x, (a, b, c), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
-                # ax.errorbar(x, (a, b, c), yerr = (stats.sem([item for sublist in data90_60[animal]  for item in sublist]),  stats.sem([item for sublist in data90_90[animal]  for item in sublist]), stats.sem([item for sublist in data90_120[animal] for item in sublist])), color = marker[animal][0], linestyle=marker[animal][2])
+                # ax.errorbar(x, (a, b, c), yerr = (stats.std([item for sublist in data90_60[animal]  for item in sublist]),  stats.std([item for sublist in data90_90[animal]  for item in sublist]), stats.std([item for sublist in data90_120[animal] for item in sublist])), color = marker[animal][0], linestyle=marker[animal][2])
             if plot == "10%":
                 ax.plot(x, (d, e, f), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
-                # ax.errorbar(x, (d, e, f), yerr = (stats.sem([item for sublist in data10_60[animal]  for item in sublist]),  stats.sem([item for sublist in data10_90[animal]  for item in sublist]), stats.sem([item for sublist in data10_120[animal] for item in sublist])), color = marker[animal][0], linestyle=marker[animal][2])
+                # ax.errorbar(x, (d, e, f), yerr = (stats.std([item for sublist in data10_60[animal]  for item in sublist]),  stats.std([item for sublist in data10_90[animal]  for item in sublist]), stats.std([item for sublist in data10_120[animal] for item in sublist])), color = marker[animal][0], linestyle=marker[animal][2])
             if plot == "%":
                 ax.plot(x, (d/a, e/b, f/c), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
 
@@ -1187,6 +1188,7 @@ def corr_twoExps(plot, animal_list, dataLeft, dataRight, session_list1, session_
                 xdata[animal] = (d + e + f) / 3
             if plot == "%":
                 xdata[animal] = (d / a + e / b + f / c) / 3
+                xdata[animal] = e / b
 
     if experiment1 == 'TM_ON':
         data90_rev20, data90_rev10, data90_rev2, data90_2, data90_10, data90_20, data10_rev20, data10_rev10, data10_rev2, data10_2, data10_10, data10_20 = separate_data(animal_list, session_list1, dataLeft, dataRight, experiment1, params, datatype, False)
@@ -1224,6 +1226,7 @@ def corr_twoExps(plot, animal_list, dataLeft, dataRight, session_list1, session_
                 xdata[animal] = (g + h + i + j + k + l) / 6
             if plot == "%":
                 xdata[animal] = (g / a + h / b + i / c + j / d + k / e + l / f) / 6
+
     if experiment2 == 'Distance':
         data90_60, data90_90, data90_120, data10_60, data10_90, data10_120 = separate_data(animal_list, session_list2, dataLeft, dataRight, experiment2, params, datatype, False)
         for animal in animal_list:
@@ -1247,6 +1250,7 @@ def corr_twoExps(plot, animal_list, dataLeft, dataRight, session_list1, session_
                 ydata[animal] = (d + e + f) / 3
             if plot == "%":
                 ydata[animal] = (d / a + e / b + f / c) / 3
+                ydata[animal] = e / b
 
     if experiment2 == 'TM_ON':
         data90_rev20, data90_rev10, data90_rev2, data90_2, data90_10, data90_20, data10_rev20, data10_rev10, data10_rev2, data10_2, data10_10, data10_20 = separate_data(animal_list, session_list2, dataLeft, dataRight, experiment2, params, datatype, False)
@@ -1283,7 +1287,7 @@ def corr_twoExps(plot, animal_list, dataLeft, dataRight, session_list1, session_
                 ydata[animal] = (g + h + i + j + k + l) / 6
             if plot == "%":
                 ydata[animal] = (g / a + h / b + i / c + j / d + k / e + l / f) / 6
-
+    print(xdata[animal], ydata[animal])
     for animal in animal_list:
         ax.scatter(xdata[animal], ydata[animal], color=marker[animal][0])
     gradient, intercept, r_value, p_value, std_err = stats.linregress(list(xdata.values()), list(ydata.values()))
@@ -1643,6 +1647,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
     rewardedRight, rewardedLeft, rewardedRightBin, rewardedLeftBin = {}, {}, {}, {}
     lickBug, notfixed, F00lostTRACKlick, buggedRatSessions, boundariesBug, runstaysepbug = buggedSessions
 
+
     palette = [(0.55, 0.0, 0.0),  (0.8, 0.36, 0.36),   (1.0, 0.27, 0.0),  (.5, .5, .5), (0.0, 0.39, 0.0),    (0.13, 0.55, 0.13),   (0.2, 0.8, 0.2), (.5, .5, .5)]  # we use RGB [0-1] not [0-255]. See www.colorhexa.com for conversion #old#palette = ['darkred', 'indianred', 'orangered', 'darkgreen', 'forestgreen', 'limegreen']
     if fnmatch.fnmatch(animal, 'RatF*'):
         rat_markers[animal] = [palette[index], "$\u2640$"]
@@ -1734,26 +1739,26 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             
             # Extract data for each .position file generated from LabView
             # Data loaded : time array, position of the animal X and Y axis, Licks to the left and to the right, and frame number
-            extractTime[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[3])  # old format = 5
+            extractTime[animal, session]      = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[3])  # old format = 5
             extractPositionX[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[4])  # old format = 6
             extractPositionY[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[5])
-            extractLickLeft[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[6])
+            extractLickLeft[animal, session]  = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[6])
             extractLickRight[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[7])
             solenoid_ON_Left[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[8])
-            solenoid_ON_Right[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[9])
-            framebuffer[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[10])
-            cameraEdit[animal, session] = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[11])
+            solenoid_ON_Right[animal, session]= read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[9])
+            framebuffer[animal, session]      = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[10])
+            cameraEdit[animal, session]       = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[11])
 
             # Cut leftover data at the end of the session (e.g. session is 1800s long, data goes up to 1820s because session has not been stopped properly/stopped manually, so we remove the extra 20s)
-            rawTime[animal, session] = extractTime[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
-            rawPositionX[animal, session] = extractPositionX[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
-            rawPositionY[animal, session] = extractPositionY[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
-            rawLickLeftX[animal, session] = extractLickLeft[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
-            rawLickLeftY[animal, session] = extractLickLeft[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
-            rawLickRightX[animal, session] = extractLickRight[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
-            rawLickRightY[animal, session] = extractLickRight[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
+            rawTime[animal, session]          =      extractTime[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
+            rawPositionX[animal, session]     = extractPositionX[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
+            rawPositionY[animal, session]     = extractPositionY[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
+            rawLickLeftX[animal, session]     =  extractLickLeft[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
+            rawLickLeftY[animal, session]     =  extractLickLeft[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
+            rawLickRightX[animal, session]    = extractLickRight[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
+            rawLickRightY[animal, session]    = extractLickRight[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
             solenoid_ON_Left[animal, session] = solenoid_ON_Left[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
-            solenoid_ON_Right[animal, session] = solenoid_ON_Right[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
+            solenoid_ON_Right[animal, session]=solenoid_ON_Right[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
             # convert data from px to cm
             rawPositionX[animal, session], rawPositionY[animal, session] = datapx2cm(rawPositionX[animal, session]), datapx2cm(rawPositionY[animal, session])
             rawSpeed[animal, session] = compute_speed(rawPositionX[animal, session], rawTime[animal, session])
@@ -1806,12 +1811,12 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             # Compute boundaries
             border = 5  # define arbitrary border
             leftBoundaryPeak[animal, session], rightBoundaryPeak[animal, session], kde[animal, session] = extract_boundaries(rawPositionX[animal, session], animal, session, params[animal, session]['treadmillDist'], height=0.001)
-            for s in boundariesBug:
-                if animal + " " + session == s[0]:
-                    params[animal, session]["boundaries"] = s[1]
-                    break
-                else:
-                    params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
+            # for s in boundariesBug:
+            #     if animal + " " + session == s[0]:
+            #         params[animal, session]["boundaries"] = s[1]
+            #         break
+            #     else:
+            params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
 
             # Compute or pickle run/stay mask
             maskpicklePath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session+os.sep+"Analysis"+os.sep+"mask.p"
@@ -2097,6 +2102,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
     rawLickLeftplot, rawLickRightplot = {}, {}
     lickBug, notfixed, F00lostTRACKlick, buggedRatSessions, boundariesBug, runstaysepbug = buggedSessions 
 
+
     palette = [(0.55, 0.0, 0.0),  (0.8, 0.36, 0.36),   (1.0, 0.27, 0.0),   (0.0, 0.39, 0.0),    (0.13, 0.55, 0.13),   (0.2, 0.8, 0.2)]### we use RGB [0-1] not [0-255]. See www.colorhexa.com for conversion #old#palette = ['darkred', 'indianred', 'orangered', 'darkgreen', 'forestgreen', 'limegreen']
     if fnmatch.fnmatch(animal, 'RatF*'): rat_markers[animal]=[palette[index], "$\u2640$"]
     elif fnmatch.fnmatch(animal, 'RatM*'): rat_markers[animal]=[palette[index], "$\u2642$"]
@@ -2118,23 +2124,26 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
 
             #extract/compute parameters from behav_params and create a parameter dictionnary for each rat and each session
             #change of behav_param format 07/2020 -> labview ok 27/07/2020 before nOk #format behavparam ? #catchup manual up to 27/07
-            params[animal, session] = { "sessionDuration" : read_params(animal, session, "sessionDuration"),
-                                        "acqPer" : read_params(animal, session, "acqPer"),
-                                        "waterLeft" : round((read_params(animal, session, "waterLeft", valueType=float) - read_params(animal, session, "cupWeight", valueType=float))/10*1000, 2),
-                                        "waterRight" : round((read_params(animal, session, "waterRight", valueType=float) - read_params(animal, session, "cupWeight", valueType=float))/10*1000, 2), 
-                                        "treadmillDist" : read_params(animal, session, "treadmillSize"),      
-                                        "weight" : read_params(animal, session, "ratWeight"), 
-                                        "lastWeightadlib" : read_params(animal, session, "ratWeightadlib"),
-                                        "lastDayadlib" : read_params(animal, session, "lastDayadlib"),
-                                        "lickthresholdLeft" : read_params(animal, session, "lickthresholdLeft"), #added in Labview 2021/07/06. Now uses the custom lickthreshold for each side. Useful when lickdata baseline drifts and value is directly changed in LV. Only one session might be bugged, so this parameter is session specific. Before, the default value (300) was used and modified manually during the analysis. 
-                                        "lickthresholdRight" : read_params(animal, session, "lickthresholdRight"),
-                                        "realEnd" : str(read_params(animal, session, "ClockStop"))} 
+
+            params[animal, session] = {"sessionDuration": read_params(root, animal, session, "sessionDuration"),
+                                       "acqPer": read_params(root, animal, session, "acqPer"),
+                                       "waterLeft": round((read_params(root, animal, session, "waterLeft", valueType=float) - read_params(root, animal, session, "cupWeight", valueType=float))/10*1000, 2),
+                                       "waterRight": round((read_params(root, animal, session, "waterRight", valueType=float) - read_params(root, animal, session, "cupWeight", valueType=float))/10*1000, 2),
+                                       "treadmillDist": read_params(root, animal, session, "treadmillSize"),
+                                       "weight": read_params(root, animal, session, "ratWeight"),
+                                       "lastWeightadlib": read_params(root, animal, session, "ratWeightadlib"),
+                                       "lastDayadlib": read_params(root, animal, session, "lastDayadlib"),
+                                       "lickthresholdLeft": read_params(root, animal, session, "lickthresholdLeft"),  # added in Labview 2021/07/06. Now uses the custom lickthreshold for each side. Useful when lickdata baseline drifts and value is directly changed in LV. Only one session might be bugged, so this parameter is session specific. Before, the default value (300) was used and modified manually during the analysis.
+                                       "lickthresholdRight": read_params(root, animal, session, "lickthresholdRight"),
+                                       "realEnd": str(read_params(root, animal, session, "ClockStop")),
+                                       "brainstatus": read_params(root, animal, session, "brainstatus", valueType="other")}
+
 
             #initialize boundaries to be computed later using the KDE function
             params[animal, session]["boundaries"] = []
 
             #compute number of days elapsed between experiment day and removal of the water bottle
-            lastDayadlib   = str(datetime.datetime.strptime(str(read_params(animal, session, "lastDayadlib")), "%Y%m%d").date())
+            lastDayadlib   = str(datetime.datetime.strptime(str(read_params(root, animal, session, "lastDayadlib")), "%Y%m%d").date())
             stringmatch    = re.search(r'\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}', session)
             experimentDay  = str(datetime.datetime.strptime(stringmatch.group(), '%Y_%m_%d_%H_%M_%S'))
             daysSinceadlib = datetime.date(int(experimentDay[0:4]), int(experimentDay[5:7]), int(experimentDay[8:10])) - datetime.date(int(lastDayadlib[0:4]), int(lastDayadlib[5:7]), int(lastDayadlib[8:10]))
@@ -2152,10 +2161,10 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
             for blockN in range(1,13): #13? or more ? Max 12 blocks, coded in LabView...
                 #add block if  block >0 seconds then get data from file. 
                 #Data from behav_params as follows: Block N°: // ON block Duration // OFF block duration // Repeat block // % reward ON // % reward OFF // Treadmill speed.
-                if read_params(animal, session, "Block "+ str(blockN), dataindex =  -6, valueType = str) != 0:
-                    blocklist.append([read_params(animal, session, "Block "+ str(blockN), dataindex =  -6, valueType = str), read_params(animal, session, "Block "+ str(blockN), dataindex =  -5, valueType = str), 
-                                    read_params(animal, session, "Block "+ str(blockN), dataindex =  -4, valueType = str), read_params(animal, session, "Block "+ str(blockN), dataindex =  -3, valueType = str), 
-                                    read_params(animal, session, "Block "+ str(blockN), dataindex =  -2, valueType = str), read_params(animal, session, "Block "+ str(blockN), dataindex =  -1, valueType = str), blockN])
+                if read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -6, valueType = str) != 0:
+                    blocklist.append([read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -6, valueType = str), read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -5, valueType = str), 
+                                    read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -4, valueType = str), read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -3, valueType = str), 
+                                    read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -2, valueType = str), read_params(root, animal, session, "Block "+ str(blockN), dataindex =  -1, valueType = str), blockN])
             
             #create an array [start_block, end_block] for each block using the values we have just read -> 1 block ON + 1 bloc OFF + etc.
             timecount, blockON_start, blockON_end, blockOFF_start, blockOFF_end = 0, 0, 0, 0, 0
@@ -2250,13 +2259,15 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
             # Compute boundaries
             border = 5 #define arbitrary border
             leftBoundaryPeak[animal, session], rightBoundaryPeak[animal, session], kde[animal, session] = extract_boundaries(rawPositionX[animal, session], animal, session, params[animal, session]['treadmillDist'], height = 0.001)
-            for s in boundariesBug: 
-                if animal + " " + session == s[0]: 
-                    params[animal, session]["boundaries"] = s[1]
-                    break
-                else: 
-                    params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
-            #print(params[animal, session]["boundaries"])
+            # print(session, "::", leftBoundaryPeak[animal, session], rightBoundaryPeak[animal, session])
+            # for s in boundariesBug: 
+                # if animal + " " + session == s[0]: 
+                #     print("inbug")
+                #     params[animal, session]["boundaries"] = s[1]
+                #     break
+                # else: 
+            params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
+            print(params[animal, session]["boundaries"])
 
             # Compute or pickle run/stay mask
             maskpicklePath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session+os.sep+"Analysis"+os.sep+"mask.p"
@@ -2389,11 +2400,12 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
         ### -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         ### SAVE + PICKLE
         ### -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            save_sessionplot_as_png(root, animal, session, 'healthFIG%s.png'%session, dpi='figure', transparent=False, background='w')
+            save_as_pickle(root, [totalDistance[animal, session], totalWater[animal, session], total_trials[animal, session]], animal, session, "misc.p")
+            save_as_pickle(root, params[animal, session],     animal, session, "params.p")
+            save_as_pickle(root, binMask[animal, session], animal, session, "mask.p")
 
-            save_sessionplot_as_png(animal, session, 'healthFIG%s.png'%session, dpi='figure', transparent=False, background='w')
-            save_as_pickle([totalDistance[animal, session], totalWater[animal, session], total_trials[animal, session]], animal, session, "misc.p")
-            save_as_pickle(params[animal, session],     animal, session, "params.p")
-            save_as_pickle(binMask[animal, session], animal, session, "mask.p")
+
             if printFigs == False:
                 plt.close('all')
 
@@ -2417,14 +2429,12 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
 
 
 
-
-
-
+##########################################################################################################################################
 # Median run computation
 # Modified from: Averaging GPS segments competition 2019. https://doi.org/10.1016/j.patcog.2020.107730
 #                T. Karasek, "SEGPUB.IPYNB", Github 2019. https://gist.github.com/t0mk/eb640963d7d64e14d69016e5a3e93fd6
-
 # # # should be able to squeeze SEM in SampleSet class
+##########################################################################################################################################
 
 def median(lst): 
     sortedLst = sorted(lst)
@@ -2624,3 +2634,666 @@ def compute_median_trajectory(posdataRight, timedataRight):
 
 
 
+##########################################################################################################################################
+
+# Reward sequence analysis functions
+
+##########################################################################################################################################
+
+
+def bin_seq(seq):
+    # cut the full sequence in blocks
+    prevblock = 0
+    index = 0
+    binseq = {k:{} for k in [_ for _ in range(0,12)]}
+    for i in range(0, len(seq)): 
+        if get_block(seq[i][0]) != prevblock: index = i  # if change block (next block) store action# to reset first action of next block to 0
+        binseq[get_block(seq[i][0])][i-index] = seq[i]
+        prevblock = get_block(seq[i][0])
+    return binseq
+
+
+def blank_plot(ax=None, col=None):
+    if ax is None:
+        ax = plt.gca()
+    if col is not None:
+        ax[col].axis('off') 
+    else: ax.axis('off')
+    return ax
+    
+
+def find_sequence(input, target_seq):
+    # find the indices of the target seq in the input
+    # call: find_sequence(sequence[animal, session], "0 0 1 1")
+    converted = []
+    for elem in range(len(input)):
+        if input[elem][1] == 'run': converted.append(input[elem][2])
+        else: converted.append(" ")
+    
+    reward_sequence = ''.join([str(_) for _ in converted])
+    max_len = len(target_seq)
+    found_indices = []
+    for i in range(len(reward_sequence)):
+        chunk = reward_sequence[i:i+max_len+1]
+        for j in range(1, len(chunk)+1):
+            seq = chunk[:j]
+            if seq == target_seq:
+                #if i>10 and i<len(reward_sequence)-15:
+                    found_indices.append(i+len(seq)-1)
+    return found_indices
+
+
+def plot_around_indices(input, target_seq, var, ax=None):
+    # plot variable during and after input sequence
+    # call: plot_around_indices(sequence[animal, session], "0 0 1 1", "speed", axs[0])
+    indices = find_sequence(input, target_seq)
+    print(f'Found {len(indices)} matches')
+    if ax is None: ax = plt.gca()
+    ax.plot((0, 0), (-1, 100), c='k', ls='--', lw=2)
+
+    if len(indices) > 0:
+
+        yy = np.empty((len(indices), 22))
+        x = np.arange(-10, 11, 1.0)[::2]
+        meanvar = []
+
+        for i, index in enumerate(indices):
+            
+            if index > 10: low = index-10
+            else: low = 0
+
+            if index > len(input)-15: high = len(input)-1
+            else: high = index+11 
+
+            if var == "speed":
+                for r in range(low, high):
+                    if input[r][1] == 'run':
+                        ax.scatter(np.random.normal(r-index, 0.25, 1), abs(input[r][4]), c='dodgerblue', s=4)
+                        try: yy[i][r-index+10] = abs(input[r][4])
+                        except IndexError: pass
+                for r in range(index+1, high):
+                    if input[r][1] == 'run':
+                        meanvar.append(abs(input[r][4]))
+                y = np.median(yy, axis=0)[::2]
+                ax.set_ylim(20, 120)
+                
+            if var == "wait":
+                for r in range(low, high+1):
+                    if input[r][1] == 'stay':
+                        ax.scatter(np.random.normal(r-index-1, 0.25, 1), input[r][3], c='orange', s=4)
+                        try: yy[i][r-index+10] = input[r][3]
+                        except IndexError: pass
+                for r in range(index+2, high+1):
+                    if input[r][1] == 'stay':
+                        meanvar.append(input[r][3])
+                y = np.median(yy, axis=0)[1::2]
+                ax.set_ylim(0, 8)
+
+            if var == "run":
+                for r in range(low, high):
+                    if input[r][1] == 'run':
+                        ax.scatter(np.random.normal(r-index, 0.25, 1), input[r][3], c='red', s=4)
+                        try: yy[i][r-index+10] = input[r][3]
+                        except IndexError: pass
+                for r in range(index+1, high):
+                    if input[r][1] == 'run':
+                        meanvar.append(abs(input[r][3]))
+                y = np.median(yy, axis=0)[::2]
+                ax.set_ylim(0, 4)
+
+        # axvspan previous runs rewarded
+        a, b = 0, 2
+        m = len(target_seq)+1
+        _ = [-i for i in range(-1, m)][::-1]
+        for yn in target_seq:
+            if yn != " ": ax.axvspan(_[a], _[b], color='g' if yn == "1" else 'r', alpha=0.25,)
+            a += 1
+            b += 1
+
+
+        # average of next 5 items
+        ax.scatter(np.random.normal(13, 0.25, len(meanvar)), meanvar, c='k', s=4)
+        ax.scatter(13, np.nanmedian(meanvar), c='gray', s=50)
+        print(f'{np.nanmedian(meanvar) :.2f} ± {stats.sem(meanvar):.2f}')
+        ax.plot(x, y, c='k', marker='o')  
+
+    ax.set_xticks(np.arange(-10, 11, 2.0))
+    ax.set_xticklabels(["-5#", "-4#", "-3#", "-2#", "-1#", 0, "+1#", "+2#", "+3#", "+4#", "+5#"])
+    ax.spines['top'].set_color("none")
+    ax.spines['right'].set_color("none")
+    ax.spines['bottom'].set_linewidth(2)
+    ax.spines['left'].set_linewidth(2)
+    return ax
+
+
+def compute_around_indices(input, target_seq, var, next=1, verbose=False):
+    # compute median of following items
+    # call: compute_around_indices(binseq[animal, session][11], "1", "speed", next=1)
+    indices = find_sequence(input, target_seq)
+    if verbose: print(f'Found {len(indices)} matches')
+
+    if len(indices) > 0:
+        meanvar = []
+
+        for i, index in enumerate(indices):
+            
+            if index > len(input)-(next*3): high = len(input)-2
+            else: high = index+(2*next)
+
+            if var == "speed":
+                for r in range(index+1, high+1):
+                    if input[r][1] == 'run':
+                        meanvar.append(abs(input[r][4]))
+                        # print(r, index, abs(input[r][4]))
+                
+            if var == "wait":
+                for r in range(index, high):
+                    if input[r][1] == 'stay':
+                        meanvar.append(input[r][3])
+
+            if var == "run":
+                for r in range(index+1, high+1):
+                    if input[r][1] == 'run':
+                        meanvar.append(abs(input[r][3]))
+        if verbose: print(f'{np.nanmedian(meanvar) :.2f} ± {stats.sem(meanvar):.2f}')
+        return meanvar
+    else: return None
+
+
+def plotseq2(axs, input, targetlist, var, dat, next=1, axes=[0, 50, 0, 120]):
+    if dat == 'blockbyblock': nbbins = 12
+    elif dat == 'firsttwo': nbbins = 2
+    elif dat == 'pooled': nbbins = 2
+    
+    for i in range(nbbins):
+        data = []
+        res = dict()
+        median, error, df, lw = dict(), dict(), dict(), dict()
+        if dat == 'pooled':
+            for elem in range(len(input)):
+                if 0+i*300 < input[elem][0] <=300+i*300:
+                    data.append(input[elem])
+                elif 600+i*300 < input[elem][0] <=900+i*300:
+                    data.append(input[elem])
+                elif 1200+i*300 < input[elem][0] <=1500+i*300:
+                    data.append(input[elem])
+                elif 1800+i*300 < input[elem][0] <=2100+i*300:
+                    data.append(input[elem])
+                elif 2400+i*300 < input[elem][0] <=2700+i*300:
+                    data.append(input[elem])
+                elif 3000+i*300 < input[elem][0] <=3300+i*300:
+                    data.append(input[elem])
+                else: pass
+        else:
+            for elem in range(len(input)):
+                if i*300 < input[elem][0] <= (i+1)*300:
+                    data.append(input[elem])
+                else: pass
+
+        for index, target in enumerate(targetlist):
+            sol = compute_around_indices(data, target, var, next=next)
+            if sol is not None:
+                prop = int(np.mean([int(i) for i in target.split()])*100)
+                if prop in res.keys(): res[prop].extend(sol)
+                if prop not in res.keys(): res[prop] = sol
+
+        for key in res.keys():
+            lw[key] = 1
+            median[key], error[key], df[key] = np.nanmedian(res[key]), stats.sem(res[key]), len(res[key])
+            # axs[i].annotate(f'{key}: {median[key]:.2f} ± {error[key]:.2f}', (0, key/100))
+
+        c = 1.3
+        for key1, key2 in itertools.combinations(median.keys(), 2):
+            t_stat, dff, cv, p = _ttest_wprecomputed(median[key1], median[key2], error[key1], error[key2], df[key1], df[key2], alpha=0.05)
+            axs[i].annotate(f'{key1}-{key2}: \n t={t_stat:.2f}, p={p:.2f}', (0, c))
+            if p <= 0.05: 
+                
+                # axs[i].annotate(f'{key1}-{key2}: \n t={t_stat:.2f}, df={dff:d}, cv={cv:.2f}, p={p:.2f}', (0, c))
+                c-=.2
+                if median[key1] > median[key2]: lw[key1] += 1
+                else: lw[key2] += 1
+                # print(f'block {i} {key1}-{key2}: {median[key1]:.1f}±{error[key1]:.1f}//{median[key2]:.1f}±{error[key2]:.1f} :: t={t_stat:.2f}, df={dff:d}, cv={cv:.2f}, p={p:.2f}')
+
+        for key in res.keys():
+            axs[i].hist(res[key], np.arange(-1, axes[1]+1, 1), 
+                weights=np.ones_like(res[key])/float(len(res[key])), 
+                color=(key/100, 0, 0), histtype='step', linewidth=lw[key], 
+                label = f'{key}% R over {len([int(i) for i in target.split()])} prev. runs',
+                cumulative=True,
+                )
+
+        alph = 90 if i%2==0 else 10
+        axs[i].axvspan(-1, axes[1], color='gray', alpha=alph/250, zorder=1)
+        axs[i].set_ylim(-.1, 1.8)
+        axs[i].set_xlim(-1, axes[1])
+        axs[i].legend()
+    axs[0].set_ylabel("cumul")
+    axs[0].set_xlabel(var)
+    return axs
+
+
+def plotseq3(axs, input, targetlist, var, dat, next=1, axes=[0, 50, 0, 120]):
+    if dat == 'blockbyblock': nbbins = 12
+    elif dat == 'firsttwo': nbbins = 2
+    elif dat == 'pooled': nbbins = 2
+    elif dat == 'mixed': nbbins = 1
+    
+    for i in range(nbbins):
+        data = []
+        res = dict()
+        median, error, df, lw = dict(), dict(), dict(), dict()
+        if dat == 'pooled':
+            for elem in range(len(input)):
+                if 0+i*300 < input[elem][0] <=300+i*300:
+                    data.append(input[elem])
+                elif 600+i*300 < input[elem][0] <=900+i*300:
+                    data.append(input[elem])
+                elif 1200+i*300 < input[elem][0] <=1500+i*300:
+                    data.append(input[elem])
+                elif 1800+i*300 < input[elem][0] <=2100+i*300:
+                    data.append(input[elem])
+                elif 2400+i*300 < input[elem][0] <=2700+i*300:
+                    data.append(input[elem])
+                elif 3000+i*300 < input[elem][0] <=3300+i*300:
+                    data.append(input[elem])
+                else: pass
+
+        elif dat == 'mixed':
+            data = input
+        else:
+            for elem in range(len(input)):
+                if i*300 < input[elem][0] <= (i+1)*300:
+                    data.append(input[elem])
+                else: pass
+
+        for index, target in enumerate(targetlist):
+            sol = compute_around_indices(data, target, var, next=next)
+            if sol is not None:
+                prop = int(np.mean([int(i) for i in target.split()])*100)
+                if prop in res.keys(): res[prop].extend(sol)
+                if prop not in res.keys(): res[prop] = sol
+
+        # if i==0: 
+        #     for key in res.keys():
+        #         print(key, res[key])
+
+        for key in res.keys():
+            lw[key] = 1
+            median[key], error[key], df[key] = np.nanmedian(res[key]), stats.sem(res[key]), len(res[key])
+            # axs[i].annotate(f'{key}: {median[key]:.2f} ± {error[key]:.2f}', (0, key/100))
+
+        # # anova
+        # F, p = stats.f_oneway(*res.values())
+        # axs[i].annotate(f'{F:.2f}, p={p:.2f}', (0, 1.3))
+
+        # # regression points
+        # x = np.concatenate([[key/100 for _ in res[key]] for key in res.keys()])
+        # y = np.concatenate([val for val in res.values()])
+        # #regression medians
+        # x = [key/100 for key in res.keys()]
+        # y = [np.median(val) for val in res.values()]
+
+        # gradient, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+        # axs[i].plot(np.linspace(np.min(x), np.max(x), 500), gradient * np.linspace(np.min(x), np.max(x), 500) + intercept, color='k' if p_value > 0.05 else 'r', lw=2.5)
+        # axs[i].annotate(f'{gradient:.2f}, p={p_value:.2f}', (0, 1.3))
+
+        # t test
+        c = 1.3
+        for key1, key2 in itertools.combinations(median.keys(), 2):
+            t_stat, dff, cv, p = _ttest_wprecomputed(median[key1], median[key2], error[key1], error[key2], df[key1], df[key2], alpha=0.05)
+            if p <= 0.05: 
+                # axs[i].annotate(f'{key1}-{key2}: \n t={t_stat:.2f}, df={dff:d}, cv={cv:.2f}, p={p:.2f}', (0, c))
+                c-=.2
+                if median[key1] > median[key2]: lw[key1] += 1
+                else: lw[key2] += 1
+                # print(f'block {i} {key1}-{key2}: {median[key1]:.1f}±{error[key1]:.1f}//{median[key2]:.1f}±{error[key2]:.1f} :: t={t_stat:.2f}, df={dff:d}, cv={cv:.2f}, p={p:.2f}')
+
+        for key in res.keys():
+            axs[i].errorbar(key/100, median[key], yerr=error[key], capsize=0, color='black', elinewidth=5, zorder=2)
+            axs[i].scatter(key/100, median[key], marker='o', color='red', s=30, zorder=3)
+            axs[i].scatter([np.random.normal(key/100, 0.05, len(res[key]))], res[key], s=5);
+            axs[i].violinplot(res[key], [key/100])
+            # axs[i].annotate(f'{median[key]:.2f}±{error[key]:.2f}', ((key/100)-.25, median[key]-(median[key]/10)))
+
+        alph = 90 if i%2==0 else 10
+        axs[i].axvspan(-1, axes[1], color='gray', alpha=alph/250, zorder=1)
+        axs[i].set_ylim(axes[2], axes[3])
+        axs[i].set_xlim(axes[0], axes[1])
+        # axs[i].legend()
+    axs[0].set_xlabel(f'Rwd over {len([int(i) for i in target.split()])} prev. runs')
+    axs[0].set_ylabel(var)
+    return axs
+
+
+def pool_sequences(animal, sessionlist, input):
+    # combine sequences for multiple sessions
+    # call: pool_sequences(animal, matchsession(animal, dist120), sequence)
+    output = dict()
+    c = 0
+    for session in sessionlist:
+        for elem in range(len(input[animal, session])):
+            output[c] = input[animal, session][elem]
+            c += 1
+        for _ in range(15):
+            output[c] = (-1, -1, -1, -1, -1)
+            c += 1
+    return output
+
+
+def generate_targetList(seq_len=1):
+    # generate list of all reward combinations for specified sequence length
+    # call: generate_targetList(seq_len=2)
+    get_binary = lambda x: format(x, 'b')
+    output = []
+    for i in range(2**seq_len):
+        # list binary number from 0 to 2**n, add leading zeroes when resulting seq is too short 
+        binstr = "0" * abs(len(get_binary(i)) - seq_len) + str(get_binary(i))
+        output.append(binstr.replace("", " ")[1: -1])
+    return output
+
+
+def _ttest_wprecomputed(mean1, mean2, se1, se2, df1, df2, alpha=0.05):
+    sed = np.sqrt(se1**2.0 + se2**2.0)
+    t_stat = (mean1 - mean2) / sed
+    df = df1 + df2 - 2
+    cv = stats.t.ppf(1.0 - alpha, df)  # critical value
+    p = (1.0 - stats.t.cdf(abs(t_stat), df)) * 2.0
+    #print('t=%.3f, df=%d, cv=%.3f, p=%.3f' % (t_stat, df, cv, p))
+    return t_stat, df, cv, p
+
+
+# block by block
+def plotseqinter(axs, input, targetlist, var, dat, next=1, axes=[0, 50, 0, 120]):
+    for i in range(12):
+        data = []
+        inter = []
+        _seq = np.empty([len(input), 0]).tolist()
+        resblock = dict()
+        resinter = dict()
+        medianblock, errorblock, dfblock, lwblock = dict(), dict(), dict(), dict()
+        medianinter, errorinter, dfinter, lwinter = dict(), dict(), dict(), dict()
+
+        for elem in range(2*targetlist, len(input)):
+            for seqitem in range(elem - 2*targetlist, elem):
+                _seq[elem].append(input[seqitem])
+
+        if var == "speed": action, idx, nxt = 'run', 4, 2
+        if var == "wait": action, idx, nxt = 'stay', 3, 1
+        if var == "run": action, idx, nxt = 'run', 3, 2
+
+        
+        for index, elem in enumerate(_seq):
+            if elem != []:
+                if all(i*300 < sublist[0] < (i+1)*300 for sublist in elem):
+                    try:
+                        #data.append([sublist[idx] if sublist[1] == action else np.nan for sublist in elem])
+                        # print([sublist[:3] if sublist[1] == action else np.nan for sublist in elem], [sublist[idx] if sublist[1] == action else np.nan for sublist in _seq[index+2]][-1])
+                        # print([sublist[0] for sublist in elem], i, [sublist[idx] if sublist[1] == action else np.nan for sublist in elem])
+
+                        avgReward = np.nanmean([sublist[2] if sublist[1] == "run" else np.nan for sublist in elem])*100
+                        nextitem = [abs([sublist[idx] if sublist[1] == action else np.nan for sublist in _seq[index+nxt]][-1])]
+                        if not np.isnan(nextitem):
+                            if avgReward in resblock.keys(): resblock[avgReward].extend(nextitem)
+                            if avgReward not in resblock.keys(): resblock[avgReward] = nextitem
+                    except IndexError: pass #pb with buffer items (-1, -1, -1, -1, -1)print(elem)
+
+                elif any(i*300 < sublist[0] < (i+1)*300 for sublist in elem):# and not all(i*300 < sublist[0] < (i+1)*300 for sublist in elem):
+                    if [sublist[0] for sublist in elem][0] > i * 300:
+                        try:
+                            avgReward = np.nanmean([sublist[2] if sublist[1] == "run" else np.nan for sublist in elem])*100
+                            nextitem = [abs([sublist[idx] if sublist[1] == action else np.nan for sublist in _seq[index+nxt]][-1])]
+                            if not np.isnan(nextitem):
+                                if avgReward in resinter.keys(): resinter[avgReward].extend(nextitem)
+                                if avgReward not in resinter.keys(): resinter[avgReward] = nextitem
+
+                            # inter.append([sublist[idx] if sublist[1] == action else np.nan for sublist in elem])
+                            # print([sublist[0] for sublist in elem], "TRANSITION", i)#, i*300, (i+1)*300)
+                        except IndexError: pass #pb with buffer items (-1, -1, -1, -1, -1)
+        
+        cut = 0
+        for key in resblock.keys():
+            axs[2*i].scatter(key/100, np.nanmean(resblock[key]), marker='o', color='red', s=30, zorder=3)
+            axs[2*i].scatter(key/100, np.nanmedian(resblock[key]), marker='o', color='cyan', s=30, zorder=3)
+            axs[2*i].scatter([np.random.normal(key/100, 0.01, len(resblock[key]))], resblock[key], s=2.5, color='k' if len(resblock[key]) >= cut else 'grey');
+            # medianblock[key], errorblock[key], dfblock[key] = np.nanmedian(resblock[key]), stats.sem(resblock[key]), len(resblock[key])
+            # axs[2*i].errorbar(key/100, medianblock[key], yerr=errorblock[key], capsize=0, color='black', elinewidth=5, zorder=2)
+            # axs[2*i].scatter(key/100, medianblock[key], marker='o', color='red', s=30, zorder=3)
+            # axs[2*i].scatter(key/100, np.nanmean(resblock[key]), marker='o', color='green', s=30, zorder=3)
+            # axs[2*i].scatter([np.random.normal(key/100, 0.05, len(resblock[key]))], resblock[key], s=5);
+            # # axs[2*i].annotate(f'{medianblock[key]:.1f} ± {errorblock[key]:.1f}', ((key/100)-.25, medianblock[key]-(medianblock[key]/10)))
+
+        for key in resinter.keys():
+            axs[2*i+1].scatter(key/100, np.nanmean(resinter[key]), marker='o', color='red', s=30, zorder=3)
+            axs[2*i+1].scatter(key/100, np.nanmedian(resinter[key]), marker='o', color='cyan', s=30, zorder=3)
+            axs[2*i+1].scatter([np.random.normal(key/100, 0.01, len(resinter[key]))], resinter[key], s=2.5, color='k' if len(resinter[key]) >= cut else 'grey');
+            # medianinter[key], errorinter[key], dfinter[key] = np.nanmedian(resinter[key]), stats.sem(resinter[key]), len(resinter[key])
+            # axs[2*i+1].errorbar(key/100, medianinter[key], yerr=errorinter[key], capsize=0, color='black', elinewidth=5, zorder=2)
+            # axs[2*i+1].scatter(key/100, medianinter[key], marker='o', color='red', s=30, zorder=3)
+            # axs[2*i+1].scatter(key/100, np.nanmean(resinter[key]), marker='o', color='green', s=30, zorder=3)
+            # axs[2*i+1].scatter([np.random.normal(key/100, 0.05, len(resinter[key]))], resinter[key], s=5);
+            # axs[2*i+1].annotate(f'{medianinter[key]:.1f} ± {errorinter[key]:.1f}', ((key/100)+1.75, medianinter[key]-(medianinter[key]/10)))
+
+        def _regression(block, ax, cut=15):
+            xx = list(block.values())
+            yy = list(block.keys())
+            x, y = [], []
+            for i in range(len(xx)):
+                if len(xx[i]) >= cut:
+                    x.extend(xx[i])
+                    y.extend([yy[i] / 100] * len(xx[i]))
+            gradient, intercept, r_value, p_value, std_err = stats.linregress(y, x)
+            ax.plot(np.linspace(np.min(y), np.max(y), 500), 
+                    gradient * np.linspace(np.min(y), np.max(y), 500) + intercept, 
+                    'g' if p_value < 0.05 else 'r', 
+                    label=f'mean_regr r: {r_value:.2f}, p: {p_value:.2f}, y = {gradient:.3f}x + {intercept:.2f}')
+            ax.legend()
+            return ax
+
+        def _regression2(block, ax, cut=15, c='cyan'):
+            xx = list(block.values())
+            yy = list(block.keys())
+            x, y = [], []
+            for i in range(len(xx)):
+                if len(xx[i]) >= cut:
+                    x.extend(xx[i])
+                    y.extend([yy[i] / 100] * len(xx[i]))
+            a, b = stats.siegelslopes(x, y)
+            ax.plot(np.linspace(np.min(y), np.max(y), 500), 
+                    a * np.linspace(np.min(y), np.max(y), 500) + b, 
+                    c, 
+                    label=f'med_regr y = {a:.3f}x + {b:.2f}')
+            ax.legend()
+            return ax
+            
+        resinterfilter = {k: v for k, v in resinter.items() if 20 <= k <= 80}
+
+        try:
+            _regression(resblock, axs[2*i], cut=cut)
+            _regression(resinter, axs[2*i+1], cut=cut)
+            _regression2(resblock, axs[2*i], cut=cut)
+            _regression2(resinter, axs[2*i+1], cut=cut)
+            _regression2(resinterfilter, axs[2*i+1], cut=cut, c='g')
+
+
+        except ValueError: pass # ValueError in firsttwo because we donc go to 3rd block
+
+
+        alph = 90 if i%2==0 else 10
+        axs[2*i].axvspan(-1, axes[1], color='gray', alpha=alph/250, zorder=1)
+        axs[2*i].set_ylim(axes[2], axes[3])
+        axs[2*i].set_xlim(axes[0], axes[1])
+
+        axs[2*i+1].set_ylim(axes[2], axes[3])
+        axs[2*i+1].set_xlim(axes[0], axes[1])
+
+
+
+    axs[0].set_xlabel(f'Rwd over {targetlist} prev. runs')
+    axs[0].set_ylabel(var)
+    return axs
+
+
+# pool all 90/-/10/- together
+def plotseqinterpool(axs, input, targetlist, var, dat, axes=[0, 50, 0, 120]):
+
+    _seq = np.empty([len(input), 0]).tolist()
+    rewardProbaBlock = [90, 10, 90, 10, 90, 10, 90, 10, 90, 10, 90, 10]
+    resblock10, resinter1090, resblock90, resinter9010 = dict(), dict(), dict(), dict()
+    cls9010, cls1090 = dict(), dict()
+
+    for elem in range(2*targetlist, len(input)):
+        for seqitem in range(elem - 2*targetlist, elem):
+            _seq[elem].append(input[seqitem])
+
+    if var == "speed": action, idx, nxt = 'run', 4, 2
+    if var == "wait": action, idx, nxt = 'stay', 3, 1
+    if var == "run": action, idx, nxt = 'run', 3, 2
+
+    for index, elem in enumerate(_seq):
+        if elem != []:
+            _list = [rewardProbaBlock[get_block(sublist[0])] if get_block(sublist[0]) is not None else None for sublist in elem]
+
+            if all(_ == 90 for _ in _list):
+                try:
+                    avgReward = np.nanmean([sublist[2] if sublist[1] == "run" else np.nan for sublist in elem])*100
+                    nextitem = [abs([sublist[idx] if sublist[1] == action and sublist[0] <= dat else np.nan for sublist in _seq[index+nxt]][-1])]
+                    if not np.isnan(nextitem):
+                        if avgReward in resblock90.keys(): resblock90[avgReward].extend(nextitem)
+                        if avgReward not in resblock90.keys(): resblock90[avgReward] = nextitem
+                except IndexError: pass
+
+            elif all(_ == 10 for _ in _list):
+                try:
+                    avgReward = np.nanmean([sublist[2] if sublist[1] == "run" else np.nan for sublist in elem])*100
+                    nextitem = [abs([sublist[idx] if sublist[1] == action and sublist[0] <= dat else np.nan for sublist in _seq[index+nxt]][-1])]
+                    if not np.isnan(nextitem):
+                        if avgReward in resblock10.keys(): resblock10[avgReward].extend(nextitem)
+                        if avgReward not in resblock10.keys(): resblock10[avgReward] = nextitem
+                except IndexError: pass
+
+            else:
+                if _list[0] == 90 and _list[-1] == 10:
+                    try:
+                        avgReward = np.nanmean([sublist[2] if sublist[1] == "run" else np.nan for sublist in elem])*100
+                        nextitem = [abs([sublist[idx] if sublist[1] == action and sublist[0] <= dat else np.nan for sublist in _seq[index+nxt]][-1])]
+                        blockcolor = [np.mean(_list) / 90]
+                        if not np.isnan(nextitem): 
+                            if avgReward in resinter9010.keys():
+                                resinter9010[avgReward].extend(nextitem)
+                                cls9010[avgReward].extend(blockcolor)
+                            if avgReward not in resinter9010.keys():
+                                resinter9010[avgReward] = nextitem
+                                cls9010[avgReward] = blockcolor
+                    except IndexError: pass
+
+                elif _list[0] == 10 and _list[-1] == 90:
+                    if not any([_ == '0.04' for _ in list(np.concatenate(elem).flat)]): 
+                        try:
+                            avgReward = np.nanmean([sublist[2] if sublist[1] == "run" else np.nan for sublist in elem])*100
+                            nextitem = [abs([sublist[idx] if sublist[1] == action and sublist[0] <= dat else np.nan for sublist in _seq[index+nxt]][-1])]
+                            blockcolor = [np.mean(_list) / 90]
+                            if not np.isnan(nextitem):
+                                if avgReward in resinter1090.keys():
+                                    resinter1090[avgReward].extend(nextitem)
+                                    cls1090[avgReward].extend(blockcolor)
+                                if avgReward not in resinter1090.keys():
+                                    resinter1090[avgReward] = nextitem
+                                    cls1090[avgReward] = blockcolor
+                        except IndexError: pass
+
+    cut = 10 
+    for key in resblock90.keys():
+        axs[0].scatter(key/100, np.nanmean(resblock90[key]), marker='o', color='red', s=30, zorder=3)
+        axs[0].scatter(key/100, np.nanmedian(resblock90[key]), marker='o', color='cyan', s=30, zorder=3)
+        axs[0].scatter([np.random.normal(key/100, 0.01, len(resblock90[key]))], resblock90[key], s=2.5, color='k' if len(resblock90[key]) >= cut else 'grey');
+
+    for key in resinter9010.keys():
+        axs[1].scatter(key/100, np.nanmean(resinter9010[key]), marker='o', color='red', s=30, zorder=3)
+        axs[1].scatter(key/100, np.nanmedian(resinter9010[key]), marker='o', color='cyan', s=30, zorder=3)
+        axs[1].scatter([np.random.normal(key/100, 0.01, len(resinter9010[key]))], resinter9010[key], s=2.5, c= [(1-_, 0, _) for _ in cls9010[key]] if len(resinter9010[key]) >= cut else 'grey');
+
+    for key in resblock10.keys():
+        axs[2].scatter(key/100, np.nanmean(resblock10[key]), marker='o', color='red', s=30, zorder=3)
+        axs[2].scatter(key/100, np.nanmedian(resblock10[key]), marker='o', color='cyan', s=30, zorder=3)
+        axs[2].scatter([np.random.normal(key/100, 0.01, len(resblock10[key]))], resblock10[key], s=2.5, color='k' if len(resblock10[key]) >= cut else 'grey');
+
+    for key in resinter1090.keys():
+        axs[3].scatter(key/100, np.nanmean(resinter1090[key]), marker='o', color='red', s=30, zorder=3)
+        axs[3].scatter(key/100, np.nanmedian(resinter1090[key]), marker='o', color='cyan', s=30, zorder=3)
+        axs[3].scatter([np.random.normal(key/100, 0.01, len(resinter1090[key]))], resinter1090[key], s=2.5, c=[(1-_, 0, _) for _ in cls1090[key]] if len(resinter1090[key]) >= cut else 'grey');
+
+
+    def _regression(block, ax, cut=15):
+        xx = list(block.values())
+        yy = list(block.keys())
+        x, y = [], []
+        for i in range(len(xx)):
+            if len(xx[i]) >= cut:
+                x.extend(xx[i])
+                y.extend([yy[i] / 100] * len(xx[i]))
+        gradient, intercept, r_value, p_value, std_err = stats.linregress(y, x)
+        ax.plot(np.linspace(np.min(y), np.max(y), 500), 
+                gradient * np.linspace(np.min(y), np.max(y), 500) + intercept, 
+                'r' if p_value < 0.05 else 'r', 
+                label=f'mean_regr r: {r_value:.2f}, p: {p_value:.2f}, y = {gradient:.3f}x + {intercept:.2f}')
+        ax.legend()
+        return ax
+
+    def _regression2(block, ax, cut=15, c='cyan'):
+        xx = list(block.values())
+        yy = list(block.keys())
+        x, y = [], []
+        for i in range(len(xx)):
+            if len(xx[i]) >= cut:
+                x.extend(xx[i])
+                y.extend([yy[i] / 100] * len(xx[i]))
+        a, b = stats.siegelslopes(x, y)
+        ax.plot(np.linspace(np.min(y), np.max(y), 500), 
+                a * np.linspace(np.min(y), np.max(y), 500) + b, 
+                c, 
+                label=f'med_regr y = {a:.3f}x + {b:.2f}')
+        ax.legend()
+        return ax
+
+    resinter9010filter = {k: v for k, v in resinter9010.items() if 20 <= k <= 80}
+    resinter1090filter = {k: v for k, v in resinter1090.items() if 20 <= k <= 80}
+        
+    try:
+        _regression(resblock90, axs[0], cut=cut)
+        _regression(resinter9010, axs[1], cut=cut)
+        _regression(resblock10, axs[2], cut=cut)
+        _regression(resinter1090, axs[3], cut=cut)
+
+        _regression2(resblock90, axs[0], cut=cut)
+        _regression2(resinter9010, axs[1], cut=cut)
+        _regression2(resblock10, axs[2], cut=cut)
+        _regression2(resinter1090, axs[3], cut=cut)
+
+        _regression2(resinter9010filter, axs[1], cut=cut, c='g')
+        _regression2(resinter1090filter, axs[3], cut=cut, c='g')
+
+    except ValueError: pass # ValueError in firsttwo because we donc go to 3rd block
+    
+
+
+    axs[0].axvspan(-1, axes[1], color='gray', alpha=90/250, zorder=1)
+    axs[0].set_xlabel(f'Rwd over {targetlist} prev. runs')
+    axs[0].set_ylabel(var)
+    axs[0].set_ylim(axes[2], axes[3])
+    axs[0].set_xlim(axes[0], axes[1])
+    axs[0].set_title("blocks90")
+
+    axs[1].set_ylim(axes[2], axes[3])
+    axs[1].set_xlim(axes[0], axes[1])
+    axs[1].set_title("90 -> 10")
+
+    axs[2].axvspan(-1, axes[1], color='gray', alpha=10/250, zorder=1)
+    axs[2].set_ylim(axes[2], axes[3])
+    axs[2].set_xlim(axes[0], axes[1])
+    axs[2].set_title("blocks10")
+
+    axs[3].set_ylim(axes[2], axes[3])
+    axs[3].set_xlim(axes[0], axes[1])
+    axs[3].set_title("10 -> 90")
+
+    return axs
