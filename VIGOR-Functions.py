@@ -936,9 +936,9 @@ def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, ex
             if datatype == 'runningtime':
                 realdist60, realdist90, realdist120 = ticks[2]
                 x = (np.nanmean(realdist60[animal]), np.nanmean(realdist90[animal]), np.nanmean(realdist120[animal]))
-                # ax.set_xticks([int(np.nanmean([np.nanmean(realdist60[animal]) for animal in animal_list])),
-                #                int(np.nanmean([np.nanmean(realdist90[animal]) for animal in animal_list])),
-                #                int(np.nanmean([np.nanmean(realdist120[animal]) for animal in animal_list]))])
+                ax.set_xticks([int(np.nanmean([np.nanmean(realdist60[animal]) for animal in animal_list])),
+                               int(np.nanmean([np.nanmean(realdist90[animal]) for animal in animal_list])),
+                               int(np.nanmean([np.nanmean(realdist120[animal]) for animal in animal_list]))])
                 ax.set_xlim(plot_axes[0], plot_axes[1])
             else:
                 x = (60, 90, 120)
