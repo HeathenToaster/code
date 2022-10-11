@@ -261,7 +261,7 @@ def poolByReward(data, proba, blocks, rewardproba):
             if len(data) == 2:  # usually for data like dataLeft+dataRight
                 output.append(data[0][i]+data[1][i])
             if len(data) > 2:
-                print("too much data, not intendend")
+                print("too much data, not intended")
     return output
 
 
@@ -278,14 +278,14 @@ def colorprint(text, color, backgroundcolor=None):
                                                           int(color[1]*255),
                                                           int(color[2]*255),
                                                           text)
-            elif backgroundcolor != None:
+            else:
                 return "\033[38;2;{0};{1};{2}m\033[48;2;{3};{4};{5}m{6}".format(
                     int(color[0]*255), int(color[1]*255), int(color[2]*255),
                     int(backgroundcolor[0]*255),
                     int(backgroundcolor[1]*255),
                     int(backgroundcolor[2]*255), text)
     else:
-        print("error: check input type(")
+        print("error: check input type")
 
 
 # util funct to print a progress bar
@@ -599,7 +599,7 @@ def plot_speed(animal, session, posdataRight, timedataRight, bounds, xylim,
             maxspeedtime = np.where(iabs == maxspeed)[0]
             plt.scatter(time[maxspeedtime], maxspeed, color='darkgreen', s=20)
         else:
-            print(max(i))
+            print("Error in plot_speed()")
     ax.set_title(title[0], fontsize=title[1])
     ax.set_xlabel(xyLabels[0], fontsize=xyLabels[2])
     ax.set_ylabel(xyLabels[1], fontsize=xyLabels[2])
@@ -651,10 +651,13 @@ def plot_figBin(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
 
     if stat == "Avg. ":
         binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.mean(data[i]) for i in range(0, len(blocks))], marker='o', ms=7, linewidth=2, color=color[0])
-        binplot.errorbar([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], yerr=[stats.sem(data[i]) for i in range(0, len(blocks))], fmt='o', color=color[0], ecolor='black', elinewidth=1, capsize=0);
+        if isinstance(data[0], list):
+            binplot.errorbar([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.mean(data[i]) for i in range(0, len(blocks))], yerr=[stats.sem(data[i]) for i in range(0, len(blocks))], fmt='o', color=color[0], ecolor='black', elinewidth=1, capsize=0);
+
     elif stat == "Med. ":
         binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], marker='o', ms=7, linewidth=2, color=color[0])
-        binplot.errorbar([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], yerr=[stats.sem(data[i]) for i in range(0, len(blocks))], fmt='o', color=color[0], ecolor='black', elinewidth=1, capsize=3);
+        if isinstance(data[0], list):
+            binplot.errorbar([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.median(data[i]) for i in range(0, len(blocks))], yerr=[stats.sem(data[i]) for i in range(0, len(blocks))], fmt='o', color=color[0], ecolor='black', elinewidth=1, capsize=3);
 
     binplot.set_title(title[0], fontsize=title[1])
     binplot.set_xlabel(xyLabels[0], fontsize=xyLabels[2])
@@ -668,6 +671,36 @@ def plot_figBin(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
     binplot.tick_params(width=2, labelsize=xyLabels[3])
     return binplot
 
+# plot per block
+def plot_figBinVaria(data, rewardProbaBlock, blocks, barplotaxes, color,
+                xyLabels=[" ", " ", " ", " "], title=[None], linewidth=1, scatter=False, binplot=False, stat="std"):
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    if not binplot:
+        binplot = plt.gca()
+    for i in range(0, len(blocks)):
+        binplot.axvspan(blocks[i][0]/60, blocks[i][1]/60, color='grey', alpha=rewardProbaBlock[i]/250, label="%reward: " + str(rewardProbaBlock[i]) if (i == 0 or i == 1) else "")
+        if scatter:
+            binplot.scatter(np.random.normal(((blocks[i][1] + blocks[i][0])/120), 1, len(data[i])), data[i], s=5, color=color[0])
+
+    # binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [stats.sem(data[i]) for i in range(0, len(blocks))], marker='o', ms=5, linewidth=1, color=color[0])
+    if stat == 'std':
+        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [np.std(data[i]) for i in range(0, len(blocks))], marker='o', ms=7, linewidth=2, color=color[0])
+    if stat == 'sem':      
+        binplot.plot([(blocks[i][1] + blocks[i][0])/120 for i in range(0, len(blocks))], [stats.sem(data[i]) for i in range(0, len(blocks))], marker='o', ms=7, linewidth=2, color=color[0])
+
+
+
+    binplot.set_title(title[0], fontsize=title[1])
+    binplot.set_xlabel(xyLabels[0], fontsize=xyLabels[2])
+    binplot.set_ylabel(stat + xyLabels[1], fontsize=xyLabels[2])
+    binplot.set_xlim([barplotaxes[0], barplotaxes[1]])
+    binplot.set_ylim([barplotaxes[2], barplotaxes[3]])
+    binplot.spines['bottom'].set_linewidth(linewidth[0])
+    binplot.spines['left'].set_linewidth(linewidth[0])
+    binplot.spines['top'].set_color("none")
+    binplot.spines['right'].set_color("none")
+    binplot.tick_params(width=2, labelsize=xyLabels[3])
+    return binplot
 
 # plot block per %reward
 def plot_figBinMean(ax, dataLeft, dataRight, color, ylim):
@@ -1627,6 +1660,42 @@ def stitch(input):
     return dataSession
 
 
+#replace first 0s in animal position (animal not found / cam init) 
+# if animal not found == camera edit, so replace with the first ok position
+def fix_start_session(pos, edit):
+    fixed = np.array(copy.deepcopy(pos))
+    _edit = np.array(copy.deepcopy(edit))
+    first_zero = next((i for i, x in enumerate(_edit) if not x), None)
+    fixed[:first_zero] = pos[first_zero]
+    _edit[:first_zero] = 0
+    return fixed.flatten(), _edit.flatten()
+
+# linear interpolation of the position when the camera did not find the animal
+def fixcamglitch(time, pos, edit):
+    last_good_pos = 0
+    fixed = np.array(copy.deepcopy(pos))
+    _ = [_ for _ in range(0, len(time))]
+    _list = [[p, e, __] if e == 0 else 0 for p, e, __ in zip(pos, edit, _)]
+
+    for i in range(1, len(_list)-1):
+        if isinstance((_list[i-1]), list) and isinstance((_list[i]), int) and isinstance((_list[i+1]), list):
+            _list[i] = [_list[i-1][0] + (_list[i+1][0] - _list[i-1][0])/2, 0, i]
+
+    for _ in split_a_list_at_zeros(_list):
+        if len(_) > 1:
+            next_good_pos = _[0][2]
+            try:
+                patch = np.linspace(_list[last_good_pos][0], _list[next_good_pos][0], next_good_pos - last_good_pos + 1)
+            except TypeError:
+                print("TypeError, happens when restarting session in Labview whitout stopping VI, \
+                cam still has last session position (so non zero and not caught by fix_start_session).\
+                    Only a few cases")
+            for i in range(last_good_pos, next_good_pos+1):
+                fixed[i] = patch[i-last_good_pos]
+            last_good_pos = _[-1][2]
+    return fixed.flatten()
+
+
 # DATA PROCESSING FUNCTION
 def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=False, redoFig=False, printFigs=False, redoMask=False):
     index = index
@@ -1759,10 +1828,17 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             rawLickRightY[animal, session]    = extractLickRight[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
             solenoid_ON_Left[animal, session] = solenoid_ON_Left[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
             solenoid_ON_Right[animal, session]=solenoid_ON_Right[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]  # not needed, check
+            cameraEdit[animal, session]       =       cameraEdit[animal, session][extractTime[animal, session] <= params[animal, session]["sessionDuration"]]
+            
             # convert data from px to cm
             rawPositionX[animal, session], rawPositionY[animal, session] = datapx2cm(rawPositionX[animal, session]), datapx2cm(rawPositionY[animal, session])
             rawSpeed[animal, session] = compute_speed(rawPositionX[animal, session], rawTime[animal, session])
             smoothMask[animal, session] = np.array([True])
+
+            # usually rat is not found in the first few frames, so we replace Xposition by the first nonzero value
+            # this is detected as a camera edit, so we fix that as well
+            rawPositionX[animal, session], cameraEdit[animal, session] = fix_start_session(rawPositionX[animal, session], cameraEdit[animal, session])
+            rawPositionX[animal, session] = fixcamglitch(rawTime[animal, session], rawPositionX[animal, session], cameraEdit[animal, session])
 
             #######################################################################################
             # smoothing
@@ -2051,7 +2127,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             save_as_pickle(root, [binLickLeftX[animal, session], binLickRightX[animal, session], binSolenoid_ON_Left[animal, session], binSolenoid_ON_Right[animal, session]], animal, session, "lick_valves.p")
             save_as_pickle(root, [rewardedRightBin[animal, session], rewardedLeftBin[animal, session]], animal, session, "rewarded.p")
             save_as_pickle(root, [TtrackStayInLeft[animal, session], TtrackStayInRight[animal, session]], animal, session, "trackTimeinZone.p")
-            save_as_pickle(root, d, animal, session, "test.p")
+            save_as_pickle(root, d, animal, session, "sequence.p")
 
             #lick_arrivalRightBin[animal, session], lick_drinkingRightBin[animal, session], lick_waitRightBin[animal, session], lick_arrivalLeftBin[animal, session], lick_drinkingLeftBin[animal, session], lick_waitLeftBin[animal, session]
             if printFigs == False:
@@ -2113,6 +2189,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
     else: sessionList = sorted([os.path.basename(expPath) for expPath in glob.glob(root+os.sep+animal+os.sep+"Experiments"+os.sep+"Rat*")])
     arr[index] = 0
     for sessionindex, session in enumerate(sessionList):
+        # print(session)
         figPath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session+os.sep+"Figures" +os.sep+"healthFIG%s.png"%session
         if os.path.exists(figPath) and (not redoFig):
             if printFigs == True: display(Image(filename=figPath))
@@ -2221,6 +2298,11 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
             rawSpeed[animal, session]  = compute_speed(rawPositionX[animal, session], rawTime[animal, session])
             smoothMask[animal,session] = np.array([True])
 
+            # usually rat is not found in the first few frames, so we replace Xposition by the first nonzero value
+            # this is detected as a camera edit, so we fix that as well
+            rawPositionX[animal, session], cameraEdit[animal, session] = fix_start_session(rawPositionX[animal, session], cameraEdit[animal, session])
+            rawPositionX[animal, session] = fixcamglitch(rawTime[animal, session], rawPositionX[animal, session], cameraEdit[animal, session])
+
             #smoothing
             smoothPos, smoothSpeed = True, True
             sigmaPos, sigmaSpeed = 2, 2 #seems to work, less: not smoothed enough, more: too smoothed, not sure how to objectively compute an optimal value.
@@ -2267,7 +2349,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
                 #     break
                 # else: 
             params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
-            print(params[animal, session]["boundaries"])
+
 
             # Compute or pickle run/stay mask
             maskpicklePath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session+os.sep+"Analysis"+os.sep+"mask.p"
@@ -2278,7 +2360,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
                     septhreshold = 0.0004
                 else: 
                     septhreshold = 0.0002
-                print(septhreshold)
+                # print(session, "septhreshold", septhreshold)
                 rawMask[animal,session]     = filterspeed(animal, session, rawPositionX[animal, session], rawSpeed[animal, session], rawTime[animal, session], septhreshold, params[animal, session]["treadmillDist"])#threshold 0.0004 seems to work ok for all TM distances. lower the thresh the bigger the wait blob zone taken, which caused problems in 60cm configuration.
                 smoothMask[animal, session] = removeSplits_Mask(rawMask, rawPositionX, animal, session, params[animal, session]["treadmillDist"])
                 binMask[animal,session]     = fixSplittedRunsMask(animal, session, bin_session(animal, session, smoothMask, rawTime, blocks), blocks)
@@ -2551,7 +2633,7 @@ class SampleSet:
         self.l = l
         self.filtix = np.intersect1d(lenix,disix)
 
-    def getAvg(self, dismax, lenlim, eps):  # median
+    def getAvg(self, dismax, lenlim, eps, stat='Med.'):  # median
         self.eps = eps
         self.endpoints()        
         self.getFiltered(dismax, lenlim)
@@ -2570,8 +2652,10 @@ class SampleSet:
             xs, ys = t.getPoints(offs)            
             xm.append(xs)
             ym.append(ys)
-        self.xp, self.yp = zip(*rdp(list(zip(np.median(xm, axis=0),np.median(ym, axis=0))), eps))
-        #self.xp, self.yp = zip(*rdp(list(zip(np.mean(xm, axis=0),np.mean(ym, axis=0))), eps))
+        if stat == "Med.":
+            self.xp, self.yp = zip(*rdp(list(zip(np.median(xm, axis=0),np.median(ym, axis=0))), eps))
+        elif stat == "Avg.":
+            self.xp, self.yp = zip(*rdp(list(zip(np.mean(xm, axis=0),np.mean(ym, axis=0))), eps))
         #self.xp, self.yp = np.mean(xm, axis=0), np.mean(ym, axis=0)
         xp, yp = self.xp,self.yp
         return xp, yp
@@ -2616,7 +2700,7 @@ class Traj:
         y = self.ys[ix] + self.yd[ix]*segoffs
         return x,y     
 
-def compute_median_trajectory(posdataRight, timedataRight):
+def compute_median_trajectory(posdataRight, timedataRight, stat='Med.'):
     # eps, zmax, lenlim used in outlier detection. Here they are set so they don't exclude any outlier in the median computation. Outlying runs will be//are removed beforehand.
     eps = 0.001
     zmax = np.inf
@@ -2624,8 +2708,8 @@ def compute_median_trajectory(posdataRight, timedataRight):
     data = list(zip([t - t[0] for t in timedataRight], posdataRight))
 
     ss = SampleSet(data)
-    ss.getAvg(zmax, lenlim, eps) # not supposed to do anything but has to be here to work ??????? Therefore, no touchy. 
-    X, Y = ss.getAvg(zmax, lenlim, eps)
+    ss.getAvg(zmax, lenlim, eps, stat) # not supposed to do anything but has to be here to work ??????? Therefore, no touchy. 
+    X, Y = ss.getAvg(zmax, lenlim, eps, stat)
 
     # Here median computation warps time (~Dynamic Time Warping) so interpolate to get back to 0.04s increments.
     interpTime = np.linspace(X[0], X[-1], int(X[-1]/0.04)+1) # create time from 0 to median arrival time, evenly spaced 0.04s
