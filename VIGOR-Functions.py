@@ -935,8 +935,9 @@ def brainstatus_plot(status):
         return 'solid'
 
 
-def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, experiment, params, plot_axes, ticks, titles_plot_xaxis_yaxis, datatype, marker):
-    ax = plt.gca()
+def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, experiment, params, plot_axes, ticks, titles_plot_xaxis_yaxis, datatype, marker, ax=None):
+    if ax is None:
+        ax = plt.gca()
     ax.set_title(titles_plot_xaxis_yaxis[0], fontsize=16)
     ax.set_xlabel(titles_plot_xaxis_yaxis[1], fontsize=16)
     ax.set_ylabel(titles_plot_xaxis_yaxis[2], fontsize=16)
@@ -1730,7 +1731,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
     if sessionIN != []:
         sessionList = sessionIN
     else:
-        sessionList = sorted([os.path.basename(expPath) for expPath in glob.glob(root+os.sep+animal+os.sep+"Experiments"+os.sep+"Rat*")])
+        sessionList = []#sorted([os.path.basename(expPath) for expPath in glob.glob(root+os.sep+animal+os.sep+"Experiments"+os.sep+"Rat*")])
     arr[index] = 0
     time.sleep(0.1*(index+1))
     for sessionindex, session in enumerate(sessionList):
@@ -2752,7 +2753,7 @@ def find_sequence(input, target_seq):
     converted = []
     for elem in range(len(input)):
         if input[elem][1] == 'run': converted.append(input[elem][2])
-        else: converted.append(" ")
+        else: converted.append(" ")  ######################remove that and sequence == "0001" instead of "0 0 0 1" 
     
     reward_sequence = ''.join([str(_) for _ in converted])
     max_len = len(target_seq)
