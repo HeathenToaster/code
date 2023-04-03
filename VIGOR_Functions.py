@@ -9,12 +9,14 @@ from itertools import groupby
 import matplotlib.cbook
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import os
 import pandas as pd
 import pickle
 import platform
 import re
+import scipy
 from scipy import stats
 from scipy.ndimage import gaussian_filter as smooth
 from scipy.signal import find_peaks
@@ -3425,8 +3427,8 @@ def plotseqinterpool(axs, input, targetlist, var, dat, axes=[0, 50, 0, 120]):
 
 
 # plot session track without analysis files
-def dirty_TRAJ(animal, session, params, barplotaxes,
-                xyLabels=[" ", " ", " ", " "], title=None, ax=None):
+def dirty_TRAJ(root, animal, session, params, barplotaxes,
+                xyLabels=["", ""], title=None, ax=None):
 
     if ax is None: ax = plt.gca()
     time = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[3])[:90000]
@@ -3609,9 +3611,6 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
         ax[1].set_xlim(0, 25)
         ax[1].set_ylim(0, 1.1)
 
-    fig.patch.set_facecolor('w')
-
-
 
 def generate_targetList(seq_len=1):
     """generate list of all reward combinations for specified memory length
@@ -3657,10 +3656,9 @@ def combine_dict(d1, d2):
 
 ######################################################
 
-
-def plot_DDMexample(mean, std, A, t0, N=100, ax=None, title=None):
+def plot_DDMexample(mean, std, A, t0, N=100, title=None):
     """plot example of DDM with specified parameters"""
-    if ax is None: ax = plt.gca()
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
     # np.random.seed(0)
     trials = [generate_trials(mean, std, A, t0) for _ in range(N)]
@@ -3669,7 +3667,7 @@ def plot_DDMexample(mean, std, A, t0, N=100, ax=None, title=None):
     for idx, dv in enumerate(trials): 
         dv[-1] = A
         if idx == rnd:
-            ax.plot(dv, c='k', lw=2, zorder=5)
+            ax.plot(dv, c='k', lw=1.5, zorder=4)
         ax.plot(dv, c='orange', alpha=.5, zorder=3)
     
     waits = np.array([len(t) for t in trials], dtype=np.float64)
@@ -3682,9 +3680,10 @@ def plot_DDMexample(mean, std, A, t0, N=100, ax=None, title=None):
 
     waitmean = A / mean * np.tanh(mean * A) + t0
     ax.plot(np.linspace(t0, waitmean, int(waitmean)+1), A / waitmean * np.arange(waitmean), c="r", zorder=4)
-    ax.annotate(r'$v$', ((t0+waitmean)/2-1, (A/2)+1), (0, 1), xycoords="data", textcoords="offset points", color="r", zorder=4)
-    ax.axhline(0, c="k", ls="--", zorder=4)
-    ax.axhline(A, c='c', zorder=4)
+    ax.annotate(r'$v$', ((t0+waitmean)/2-1, (A/2)+1), (0, 1), xycoords="data", textcoords="offset points", color="r", zorder=4, fontsize=14)
+
+    ax.axhline(0, xmin=t0, c="k", ls="--", zorder=5, lw=2.5)
+    ax.axhline(A, c='c', zorder=5, lw=2.5)
     ax.set_yticks([0, A])
     ax.set_yticklabels([0, r'$A$'])
     ax.get_yticklabels()[1].set_color('c') 
@@ -3693,8 +3692,8 @@ def plot_DDMexample(mean, std, A, t0, N=100, ax=None, title=None):
     ax.set_title(title)
     ax.set_ylim(-10, 30)
     ax.set_xlim(0, 100)
-    ax.plot((0, t0), (0, 0), c="g", zorder=4)
-    ax.annotate(r'$t_0$', ((0+t0)/2, 1), (0, 1), xycoords="data", textcoords="offset points", color="g", zorder=4)
+    ax.plot((0, t0), (0, 0), c="g", zorder=5, lw=2.5)
+    ax.annotate(r'$t_0$', ((0+t0)/2, 1), (0, 1), xycoords="data", textcoords="offset points", color="g", zorder=4, fontsize=14)
 
     # inset
     l, b, h, w = .7, .7, .25, .25
@@ -3706,11 +3705,10 @@ def plot_DDMexample(mean, std, A, t0, N=100, ax=None, title=None):
                     )
     ax2.set_ylim(0.01, 1.1)
     ax2.set_xlim(1, 100)
-    ax2.set_ylabel('1-CDF')
+    ax2.set_ylabel('log 1-CDF')
+    ax2.set_xlabel('log t')
     ax2.set_yscale('log')
     ax2.set_xscale('log')
-
-    return waits
 
 def generate_trials(mean, std, A, t0):
     """generate a single diffusion trial"""
@@ -3940,74 +3938,6 @@ def modelwald_fit(data, init=[2, 0, .5, 0, 0, 0, 0, 0, 0], f=model_crit, N_bins=
                                             alpha_second_bounds, (0, 1e-8), gamma_second_bounds))
     return res.x, res.fun
 
-# separate the data into time and reward bins
-def prepare_data(animalList, sessionList, memsize=3, time_bins=6):
-    """prepare data for fitting
-    cut the data into time bins and reward bins"""
-    bin_size = 3600/time_bins
-    targetlist = generate_targetList(memsize)[::-1]
-    temp_data = {}
-    for bin in range(time_bins):
-        temp_data[bin] = {}
-        for animal in animalList:
-            temp_data[bin][animal] = {k:[] for k in _meankeys(targetlist)}
-            for session in matchsession(animal, sessionList):
-                temp_data[bin][animal] = combine_dict(temp_data[bin][animal], get_waiting_times(sequence[animal, session], memsize=memsize, filter=[bin*bin_size, (bin+1)*bin_size]))
-    
-    data = {}
-    for animal in animalList:
-        data[animal] = np.zeros((time_bins, len(_meankeys(targetlist)))).tolist()
-        for i, avg in enumerate(_meankeys(targetlist)):  # 1 -> 0
-            for bin in range(time_bins):
-                data[animal][bin][i] = np.asarray(temp_data[bin][animal][avg])
-    return data
-
-def prepare_data_session(animalList, sessionList, memsize=3, time_bins=6):
-    """prepare data for fitting
-    cut the data into time bins and reward bins and session"""
-    bin_size = 3600/time_bins
-    targetlist = generate_targetList(memsize)[::-1]
-    temp_data = {}
-    for bin in range(time_bins):
-        temp_data[bin] = {}
-        for animal in animalList:
-            temp_data[bin][animal] = {key: {k:[] for k in _meankeys(targetlist)} for key in matchsession(animal, sessionList)}
-            for session in matchsession(animal, sessionList):
-                temp_data[bin][animal][session] = combine_dict(temp_data[bin][animal][session], get_waiting_times(sequence[animal, session], memsize=memsize, filter=[bin*bin_size, (bin+1)*bin_size]))
-    
-    data = {}
-    for animal in animalList:
-        data[animal] = {}
-        for session in matchsession(animal, sessionList):
-            data[animal][session] = np.zeros((time_bins, len(_meankeys(targetlist)))).tolist()
-            for i, avg in enumerate(_meankeys(targetlist)):  # 1 -> 0
-                for bin in range(time_bins):
-                    data[animal][session][bin][i] = np.asarray(temp_data[bin][animal][session][avg])
-    return data
-
-
-
-
-def prepare_dataAMPM(animalList, sessionList, memsize=3, time_bins=6, AMPM=False):
-    """prepare data for fitting
-    cut the data into time bins and reward bins and AM/PM"""
-    bin_size = 3600/time_bins
-    targetlist = generate_targetList(memsize)[::-1]
-    temp_data = {}
-    for bin in range(time_bins):
-        temp_data[bin] = {}
-        for animal in animalList:
-            temp_data[bin][animal] = {k:[] for k in _meankeys(targetlist)}
-            for session in matchsession(animal, sessionList, AMPM=AMPM):
-                temp_data[bin][animal] = combine_dict(temp_data[bin][animal], get_waiting_times(sequence[animal, session], memsize=memsize, filter=[bin*bin_size, (bin+1)*bin_size]))
-    
-    data = {}
-    for animal in animalList:
-        data[animal] = np.zeros((time_bins, len(_meankeys(targetlist)))).tolist()
-        for i, avg in enumerate(_meankeys(targetlist)):  # 1 -> 0
-            for bin in range(time_bins):
-                data[animal][bin][i] = np.asarray(temp_data[bin][animal][avg])
-    return data
 
 
 def plot_wald_fitted(waits, p, ax=None, color='k'):
@@ -4047,8 +3977,8 @@ def test_all_conds_between_themselves(conds, vars, ax=None):
             for j, cond2 in enumerate(conds):
                 if i >= j:
                     continue
-                data1 = [var[animal][cond1] for animal in animalList]
-                data2 = [var[animal][cond2] for animal in animalList]
+                data1 = [var[animal][cond1] for animal in list(var.keys())]
+                data2 = [var[animal][cond2] for animal in list(var.keys())]
                 s, p = stats.ttest_ind(data1, data2)
                 # print(f"{idx} {cond1} vs {cond2}: {p:.3f} {'*' if p < .05 else ''}")
 
@@ -4061,6 +3991,7 @@ def test_all_conds_between_themselves(conds, vars, ax=None):
 
 
 def dict_to_xticklabels(d):
+    """convert dict keys to xticklabels for ablation plots"""
     allkeys = list(d.keys())
     conv = lambda x: "-" if x else "+"
     result = [r"$\alpha'$"+"\n"+r"$\gamma'$"+"\n"+r"$\alpha''$"+"\n"+r"$\gamma''$"]
@@ -4069,15 +4000,16 @@ def dict_to_xticklabels(d):
     return result
 
 
-def test_all_keys_between_themselves(keys, ax=None):
+def test_all_keys_between_themselves(losses, keys, ax=None):
+    """dirty stats to test all conditions against each other, but with keys"""
     if ax is None: ax = plt.gca()
     c = 0
     for i, key1 in enumerate(keys):
         for j, key2 in enumerate(keys):
             if i >= j:
                 continue
-            data1 = [losses[animal][key1]/losses[animal][False, False, False, False] for animal in animalList]
-            data2 = [losses[animal][key2]/losses[animal][False, False, False, False] for animal in animalList]
+            data1 = [losses[animal][key1]/losses[animal][False, False, False, False] for animal in list(losses.keys())]
+            data2 = [losses[animal][key2]/losses[animal][False, False, False, False] for animal in list(losses.keys())]
             s, p = stats.ttest_ind(data1, data2)
             print(f"{key1} vs {key2}: {p:.3f} {'*' if p < .05 else ''}")
 
