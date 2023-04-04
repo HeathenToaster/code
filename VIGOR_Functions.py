@@ -10,6 +10,7 @@ import matplotlib.cbook
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.colors import ListedColormap
 import numpy as np
 import os
 import pandas as pd
@@ -3454,7 +3455,7 @@ def dirty_TRAJ(root, animal, session, params, barplotaxes,
     return ax
 
 
-# plot variable median/mean fir each block
+# plot variable median/mean fir each blockFdodger
 def plot_figBinNEW(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
                 xyLabels=[" ", " ", " ", " "], title="", scatter=False, ax=False):
     warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -3484,6 +3485,7 @@ def plot_figBinNEW(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
     
 # raster of (non)rewarded trials, reward average selection, and idle time distribution plots
 def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
+    if ax is None: fig, ax = plt.subplots(1, 1, figsize=(10, 5))
     input = bin_seq(data)
 
     # get the number of runs per block to init vars
@@ -3497,6 +3499,7 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     # get the 0-1 rewards and times for each block
     rewards = np.ones((12, int(max(c))))*.5
     times = np.ones((12, int(max(c))))*.5
+
     for i in range(12):
         rw, trw = [], []
         for a in range(0, len(input[i])):
@@ -3506,22 +3509,35 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
         rewards[i, 0:len(rw)] = rw
         times[i, 0:len(trw)] = trw
 
-    if ax is not None:
-        ax[0].imshow(rewards, cmap='RdYlGn',  interpolation='none')
-        ax[0].set_xticks([])
-        ax[0].set_yticks([])
-        ax[0].spines['bottom'].set_color("none")
-        ax[0].spines['left'].set_color("none")
-        ax[0].spines['top'].set_color("none")
-        ax[0].spines['right'].set_color("none")
-        ax[0].set_ylabel('# Block')
-        ax[0].set_xlabel('# Reward')
-        ax[0].set_title(f'Average reward: {avg}')
-        ax[0].set_xlim(-5, int(max(c)))
+
+    cmap = ListedColormap(['r', 'w', 'g'])
+    edges = np.copy(rewards,)
+    edges = np.where(edges == 0.0, 'k', edges)
+    edges = np.where(edges == '1.0', 'k', edges)
+    edges = np.where(edges == '0.5', 'w', edges)
+    edges = [item for sublist in edges for item in sublist]
+
+    x = np.arange(max(c))
+    y = np.arange(12)[::-1]
+    X, Y = np.meshgrid(x, y)
+    ax.scatter(X,Y,s=200, marker='o', c=rewards, cmap=cmap, vmin=0, vmax=1, edgecolors=edges, linewidths=1)
+
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.spines['bottom'].set_color("none")
+    ax.spines['left'].set_color("none")
+    ax.spines['top'].set_color("none")
+    ax.spines['right'].set_color("none")
+    ax.set_ylabel('# Block')
+    ax.set_xlabel('# Reward')
+    ax.set_title(f'Average reward: {avg}')
+    ax.set_xlim(-5, int(max(c))+1)
+
 
     def _get_waiting_times_idx(data, memsize=3, filter=[0, 3600]):
         """get waiting times idx from data"""
-        waiting_times = {k:[] for k in _meankeys(generate_targetList(seq_len=memsize)[::-1])}
+        waiting_times = {k:[] for k in meankeys(generate_targetList(seq_len=memsize)[::-1])}
         idx=0
         for i in range(len(data)):
             if data[i][1] == 'stay':
@@ -3546,18 +3562,18 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
 
     def _convert_res(res):
         idx, idy = 0, 0
-        if cc[0] <= res < cc[1]: idx, idy = 0, int(res-cc[0])
-        if cc[1] <= res < cc[2]: idx, idy = 1, int(res-cc[1])
-        if cc[2] <= res < cc[3]: idx, idy = 2, int(res-cc[2])
-        if cc[3] <= res < cc[4]: idx, idy = 3, int(res-cc[3])
-        if cc[4] <= res < cc[5]: idx, idy = 4, int(res-cc[4])
-        if cc[5] <= res < cc[6]: idx, idy = 5, int(res-cc[5])
-        if cc[6] <= res < cc[7]: idx, idy = 6, int(res-cc[6])
-        if cc[7] <= res < cc[8]: idx, idy = 7, int(res-cc[7])
-        if cc[8] <= res < cc[9]: idx, idy = 8, int(res-cc[8])
-        if cc[9] <= res < cc[10]: idx, idy = 9, int(res-cc[9])
-        if cc[10] <= res < cc[11]: idx, idy = 10, int(res-cc[10])
-        if cc[11] <= res < cc[12]: idx, idy = 11, int(res-cc[11])
+        if cc[0] <= res < cc[1]: idx, idy = 11, int(res-cc[0])
+        if cc[1] <= res < cc[2]: idx, idy = 10, int(res-cc[1])
+        if cc[2] <= res < cc[3]: idx, idy = 9, int(res-cc[2])
+        if cc[3] <= res < cc[4]: idx, idy = 8, int(res-cc[3])
+        if cc[4] <= res < cc[5]: idx, idy = 7, int(res-cc[4])
+        if cc[5] <= res < cc[6]: idx, idy = 6, int(res-cc[5])
+        if cc[6] <= res < cc[7]: idx, idy = 5, int(res-cc[6])
+        if cc[7] <= res < cc[8]: idx, idy = 4, int(res-cc[7])
+        if cc[8] <= res < cc[9]: idx, idy = 3, int(res-cc[8])
+        if cc[9] <= res < cc[10]: idx, idy = 2, int(res-cc[9])
+        if cc[10] <= res < cc[11]: idx, idy = 1, int(res-cc[10])
+        if cc[11] <= res < cc[12]: idx, idy = 0, int(res-cc[11])
         return idx, idy
 
     for r in res:
@@ -3567,10 +3583,9 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
         if filter[0] <= times[idx, idy] <= filter[1]:
             timeres.append(times[idx, idy])  ## 2D array index for time of the end of the sequence in the data
             dtimeres.append(times[didx, didy])  ## 2D array index for time of the start of the sequence in the data
-            if ax is not None:
-                ax[0].add_patch(patches.Rectangle((idy+.5, idx+.5), -memsize, -1, fill=False, lw=2, color='k'))
+            ax.add_patch(patches.FancyBboxPatch((idy-(memsize-1)-0.1, idx), memsize-.8, .04, boxstyle=patches.BoxStyle("Round", pad=.35), fill=False, lw=2.5, color='k'))
     
-    # get next wait time after the sequence
+
     nextwait = []
     sequenceduration = []
     for t, dt in zip(timeres, dtimeres):
@@ -3587,29 +3602,36 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
                     start = data[elem][0]
         sequenceduration.append(end-start)
 
+    return nextwait
+
+def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None):
     if ax is not None:
         mx = 300
         bins = np.arange(0, mx+1, 1)
-        ax[2].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color='k', 
+
+
+        ax[0].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color=color, lw=2, 
+                    density=True, 
+                    weights=np.ones(len(nextwait)) / len(nextwait) *100,)
+        ax[0].set_title(f"Next wait time distribution after {avg}")
+        ax[0].set_xlabel("Wait time (s)")
+        ax[0].set_ylabel("PDF")
+        ax[0].set_xlim(0, 25)
+        ax[0].set_ylim(0, 1.1)
+
+
+        ax[1].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color=color, lw=2,
                     density=True, 
                     weights=np.ones(len(nextwait)) / len(nextwait) *100,
                     cumulative=-1)
-        ax[2].set_title(f"Next wait time distribution after {avg}")
-        ax[2].set_xlabel("Wait time (s)")
-        ax[2].set_ylabel("1-CDF")
-        ax[2].set_yscale('log')
-        ax[2].set_xscale('log')
-        ax[2].set_xlim(0.1, 300)
-        ax[2].set_ylim(0.001, 1.1)
-
-        ax[1].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color='k', 
-                    density=True, 
-                    weights=np.ones(len(nextwait)) / len(nextwait) *100,)
         ax[1].set_title(f"Next wait time distribution after {avg}")
         ax[1].set_xlabel("Wait time (s)")
-        ax[1].set_ylabel("PDF")
-        ax[1].set_xlim(0, 25)
-        ax[1].set_ylim(0, 1.1)
+        ax[1].set_ylabel("1-CDF")
+        ax[1].set_yscale('log')
+        ax[1].set_xscale('log')
+        ax[1].set_xlim(0.1, 300)
+        ax[1].set_ylim(0.001, 1.1)
+
 
 
 def generate_targetList(seq_len=1):
@@ -3623,9 +3645,9 @@ def generate_targetList(seq_len=1):
         output.append(binstr)
     return output
 
-def _meankeys(targetlist):
+def meankeys(targetlist):
     """get each possible mean for a list of targets
-    call: _meankeys(generate_targetList(seq_len=2))"""
+    call: meankeys(generate_targetList(seq_len=2))"""
     result = []
     for target in targetlist:
         res = round(np.mean([int(elem) for elem in target]), 2)
@@ -3636,7 +3658,7 @@ def _meankeys(targetlist):
 def get_waiting_times(data, memsize=3, filter=[0, 3600], toolong=3600):
     """get waiting times from sequence of actions data and separate them
     according to the average reward of the sequence"""
-    waiting_times = {k:[] for k in _meankeys(generate_targetList(seq_len=memsize)[::-1])}
+    waiting_times = {k:[] for k in meankeys(generate_targetList(seq_len=memsize)[::-1])}
     for i in range(len(data)):
         if data[i][1] == 'stay':
             if filter[0] <= data[i][0] <= filter[1] and data[i][3] != 0:
