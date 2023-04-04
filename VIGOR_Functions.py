@@ -3973,7 +3973,7 @@ def plot_wald_fitted(waits, p, ax=None, color='k'):
                     density=True, # weights=np.ones_like(waits) / len(waits),
                     histtype="step", lw=2, cumulative=-1,)
 
-    x = np.linspace(0.01, 500, 10000)
+    x = np.linspace(0.001, 500, 10000)
     (alpha, theta, gamma) = p
     ax.plot(x, 1-Wald_cdf(x, alpha, theta, gamma), color=color, lw=1, zorder=4, label=f'mean={gamma:.2f}, A={alpha:.2f}, t0={theta:.2f}')
 
