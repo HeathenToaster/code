@@ -3524,7 +3524,8 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
 
 
     ax.set_xticks([])
-    ax.set_yticks([])
+    ax.set_yticks(np.arange(12))
+    ax.set_yticklabels(np.arange(1, 13)[::-1])
     ax.spines['bottom'].set_color("none")
     ax.spines['left'].set_color("none")
     ax.spines['top'].set_color("none")
@@ -3535,18 +3536,17 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     ax.set_xlim(-5, int(max(c))+1)
 
 
-    def _get_waiting_times_idx(data, memsize=3, filter=[0, 3600]):
+    def _get_waiting_times_idx(data, memsize=3):
         """get waiting times idx from data"""
         waiting_times = {k:[] for k in meankeys(generate_targetList(seq_len=memsize)[::-1])}
         idx=0
         for i in range(len(data)):
             if data[i][1] == 'stay':
-                if filter[0] <= data[i][0] <= filter[1] and data[i][3] != 0:
-                    try:
-                        avg_rwd = round(np.mean([data[i-n][2] for n in range(1, (memsize*2)+1, 2)]), 2)
-                        waiting_times[avg_rwd].append(idx)
-                    except:  # put the first n waits in rwd=1 (because we don't have the previous n runs to compute the average reward)
-                        waiting_times[1].append(idx)
+                try:
+                    avg_rwd = round(np.mean([data[i-n][2] for n in range(1, (memsize*2)+1, 2)]), 2)
+                    waiting_times[avg_rwd].append(idx)
+                except:  # put the first n waits in rwd=1 (because we don't have the previous n runs to compute the average reward)
+                    waiting_times[1].append(idx)
                 idx+=1
         return waiting_times
 
@@ -3554,7 +3554,7 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     timeres = []
     dtimeres = []
     res = _get_waiting_times_idx(data, memsize=memsize)[avg]
-
+    
 
     # convert sequence index to 2D array index (block, run) (bc. we don't have same number of runs per block)
     cc = np.cumsum(c)
@@ -3562,18 +3562,18 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
 
     def _convert_res(res):
         idx, idy = 0, 0
-        if cc[0] <= res < cc[1]: idx, idy = 11, int(res-cc[0])
-        if cc[1] <= res < cc[2]: idx, idy = 10, int(res-cc[1])
-        if cc[2] <= res < cc[3]: idx, idy = 9, int(res-cc[2])
-        if cc[3] <= res < cc[4]: idx, idy = 8, int(res-cc[3])
-        if cc[4] <= res < cc[5]: idx, idy = 7, int(res-cc[4])
-        if cc[5] <= res < cc[6]: idx, idy = 6, int(res-cc[5])
-        if cc[6] <= res < cc[7]: idx, idy = 5, int(res-cc[6])
-        if cc[7] <= res < cc[8]: idx, idy = 4, int(res-cc[7])
-        if cc[8] <= res < cc[9]: idx, idy = 3, int(res-cc[8])
-        if cc[9] <= res < cc[10]: idx, idy = 2, int(res-cc[9])
-        if cc[10] <= res < cc[11]: idx, idy = 1, int(res-cc[10])
-        if cc[11] <= res < cc[12]: idx, idy = 0, int(res-cc[11])
+        if cc[0] <= res < cc[1]: idx, idy = 0, int(res-cc[0])
+        if cc[1] <= res < cc[2]: idx, idy = 1, int(res-cc[1])
+        if cc[2] <= res < cc[3]: idx, idy = 2, int(res-cc[2])
+        if cc[3] <= res < cc[4]: idx, idy = 3, int(res-cc[3])
+        if cc[4] <= res < cc[5]: idx, idy = 4, int(res-cc[4])
+        if cc[5] <= res < cc[6]: idx, idy = 5, int(res-cc[5])
+        if cc[6] <= res < cc[7]: idx, idy = 6, int(res-cc[6])
+        if cc[7] <= res < cc[8]: idx, idy = 7, int(res-cc[7])
+        if cc[8] <= res < cc[9]: idx, idy = 8, int(res-cc[8])
+        if cc[9] <= res < cc[10]: idx, idy = 9, int(res-cc[9])
+        if cc[10] <= res < cc[11]: idx, idy = 10, int(res-cc[10])
+        if cc[11] <= res < cc[12]: idx, idy = 11, int(res-cc[11])
         return idx, idy
 
     for r in res:
@@ -3583,7 +3583,7 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
         if filter[0] <= times[idx, idy] <= filter[1]:
             timeres.append(times[idx, idy])  ## 2D array index for time of the end of the sequence in the data
             dtimeres.append(times[didx, didy])  ## 2D array index for time of the start of the sequence in the data
-            ax.add_patch(patches.FancyBboxPatch((idy-(memsize-1)-0.1, idx), memsize-.8, .04, boxstyle=patches.BoxStyle("Round", pad=.35), fill=False, lw=2.5, color='k'))
+            ax.add_patch(patches.FancyBboxPatch((idy-(memsize-1)-0.1, 11-idx), memsize-.8, .04, boxstyle=patches.BoxStyle("Round", pad=.35), fill=False, lw=2.5, color='k'))
     
 
     nextwait = []
@@ -3604,15 +3604,16 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
 
     return nextwait
 
-def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None):
+def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None, label=''):
     if ax is not None:
         mx = 300
-        bins = np.arange(0, mx+1, 1)
+        bins = np.arange(0, mx+1, .5)
 
 
         ax[0].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color=color, lw=2, 
                     density=True, 
-                    weights=np.ones(len(nextwait)) / len(nextwait) *100,)
+                    weights=np.ones(len(nextwait)) / len(nextwait) *100,
+                    label=label)
         ax[0].set_title(f"Idle time distribution after {avg}")
         ax[0].set_xlabel("Idle time (s)")
         ax[0].set_ylabel("PDF")
@@ -3623,7 +3624,8 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None):
         ax[1].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color=color, lw=2,
                     density=True, 
                     weights=np.ones(len(nextwait)) / len(nextwait) *100,
-                    cumulative=-1)
+                    cumulative=-1, 
+                    label=label)
         ax[1].set_title(f"Idle time distribution after {avg}")
         ax[1].set_xlabel("Idle time (s)")
         ax[1].set_ylabel("1-CDF")
@@ -3631,6 +3633,9 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None):
         ax[1].set_xscale('log')
         ax[1].set_xlim(0.1, 1000)
         ax[1].set_ylim(0.001, 1.1)
+
+        ax[0].legend()
+        ax[1].legend()
 
 
 
