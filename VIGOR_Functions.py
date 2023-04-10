@@ -3613,8 +3613,8 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None):
         ax[0].hist(sorted(nextwait)[::-1], bins=bins, histtype='step', color=color, lw=2, 
                     density=True, 
                     weights=np.ones(len(nextwait)) / len(nextwait) *100,)
-        ax[0].set_title(f"Next wait time distribution after {avg}")
-        ax[0].set_xlabel("Wait time (s)")
+        ax[0].set_title(f"Idle time distribution after {avg}")
+        ax[0].set_xlabel("Idle time (s)")
         ax[0].set_ylabel("PDF")
         ax[0].set_xlim(0, 25)
         ax[0].set_ylim(0, 1.1)
@@ -3624,12 +3624,12 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None):
                     density=True, 
                     weights=np.ones(len(nextwait)) / len(nextwait) *100,
                     cumulative=-1)
-        ax[1].set_title(f"Next wait time distribution after {avg}")
-        ax[1].set_xlabel("Wait time (s)")
+        ax[1].set_title(f"Idle time distribution after {avg}")
+        ax[1].set_xlabel("Idle time (s)")
         ax[1].set_ylabel("1-CDF")
         ax[1].set_yscale('log')
         ax[1].set_xscale('log')
-        ax[1].set_xlim(0.1, 300)
+        ax[1].set_xlim(0.1, 1000)
         ax[1].set_ylim(0.001, 1.1)
 
 
@@ -3780,14 +3780,16 @@ def plot_interactiveWald(alpha=1, gamma=2, t_0=0):
     axs[1].set_ylabel('pdf')
     axs[1].set_title('pdf')
     axs[2].plot(x, cdf)
+    axs[2].set_xscale('log')
+    axs[2].set_yscale('log')
     axs[2].set_xlabel('x')
     axs[2].set_ylabel('1-cdf')
     axs[2].set_title('1-cdf')
 
     axs[1].set_xlim(0, 4)
     axs[1].set_ylim(0, 4)
-    axs[2].set_xlim(0, 4)
-    axs[2].set_ylim(0, 1.1)
+    axs[2].set_xlim(0.01, 10)
+    axs[2].set_ylim(0.01, 1.1)
     return
 
 
@@ -3973,7 +3975,7 @@ def plot_wald_fitted(waits, p, ax=None, color='k'):
                     density=True, # weights=np.ones_like(waits) / len(waits),
                     histtype="step", lw=2, cumulative=-1,)
 
-    x = np.linspace(0.01, 500, 10000)
+    x = np.linspace(0.001, 500, 10000)
     (alpha, theta, gamma) = p
     ax.plot(x, 1-Wald_cdf(x, alpha, theta, gamma), color=color, lw=1, zorder=4, label=f'mean={gamma:.2f}, A={alpha:.2f}, t0={theta:.2f}')
 
