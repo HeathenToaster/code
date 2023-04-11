@@ -3534,6 +3534,7 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     ax.set_xlabel('# Reward')
     ax.set_title(f'Average reward: {avg}')
     ax.set_xlim(-5, int(max(c))+1)
+    ax.set_title(f'Reward sequence in example session')
 
 
     def _get_waiting_times_idx(data, memsize=3):
@@ -3584,7 +3585,8 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
             timeres.append(times[idx, idy])  ## 2D array index for time of the end of the sequence in the data
             dtimeres.append(times[didx, didy])  ## 2D array index for time of the start of the sequence in the data
             ax.add_patch(patches.FancyBboxPatch((idy-(memsize-1)-0.1, 11-idx), memsize-.8, .04, boxstyle=patches.BoxStyle("Round", pad=.35), fill=False, lw=2.5, color='k'))
-    
+        else:
+            ax.add_patch(patches.FancyBboxPatch((idy-(memsize-1)-0.1, 11-idx), memsize-.8, .04, boxstyle=patches.BoxStyle("Round", pad=.35), fill=False, lw=2.5, color='k', alpha=0.35))
 
     nextwait = []
     sequenceduration = []
@@ -3614,7 +3616,7 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None, label=''
                     density=True, 
                     weights=np.ones(len(nextwait)) / len(nextwait) *100,
                     label=label)
-        ax[0].set_title(f"Idle time distribution after {avg}")
+        ax[0].set_title(f"Idle time distribution after {avg}\nrewards obtained in 0-10 min")
         ax[0].set_xlabel("Idle time (s)")
         ax[0].set_ylabel("PDF")
         ax[0].set_xlim(0, 25)
@@ -3626,7 +3628,7 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None, label=''
                     weights=np.ones(len(nextwait)) / len(nextwait) *100,
                     cumulative=-1, 
                     label=label)
-        ax[1].set_title(f"Idle time distribution after {avg}")
+        ax[1].set_title(f"Log-log Idle time distribution after {avg}\nrewards obtained in 0-10 min")
         ax[1].set_xlabel("Idle time (s)")
         ax[1].set_ylabel("1-CDF")
         ax[1].set_yscale('log')
@@ -3773,7 +3775,7 @@ def plot_interactiveWald(alpha=1, gamma=2, t_0=0):
     axs[0].plot(x, Wald_pdf(x, 1, 0, 3.8), 'r-', label='increased gamma')
     axs[0].plot(np.linspace(0.81, 4, 1000), Wald_pdf(np.linspace(0.81, 4, 1000), 1, .8, 2), 'g-', label='increased theta')
     axs[0].set_ylabel('PDF')
-    axs[0].set_xlabel('x')
+    axs[0].set_xlabel('t')
     axs[0].set_xlim(0, 4)
     axs[0].set_ylim(0, 4)
     axs[0].legend()
@@ -3781,15 +3783,15 @@ def plot_interactiveWald(alpha=1, gamma=2, t_0=0):
     pdf = Wald_pdf(x, alpha, t_0, gamma)
     cdf = 1-Wald_cdf(x, alpha, t_0, gamma)
     axs[1].plot(x, pdf)
-    axs[1].set_xlabel('x')
+    axs[1].set_xlabel('t')
     axs[1].set_ylabel('pdf')
     axs[1].set_title('pdf')
     axs[2].plot(x, cdf)
     axs[2].set_xscale('log')
     axs[2].set_yscale('log')
-    axs[2].set_xlabel('x')
-    axs[2].set_ylabel('1-cdf')
-    axs[2].set_title('1-cdf')
+    axs[2].set_xlabel('log t')
+    axs[2].set_ylabel('log 1-cdf')
+    axs[2].set_title('log 1-cdf')
 
     axs[1].set_xlim(0, 4)
     axs[1].set_ylim(0, 4)
@@ -3851,7 +3853,7 @@ def example_wald_fit(mean, std, A, t0, N=100, ax=None, color='k'):
     ydata, xdata, _ = ax.hist(waits, bins=bins,
                     color=color, alpha=.5, zorder=1, 
                     density=True, # weights=np.ones_like(waits) / len(waits),
-                    histtype="step", lw=2, cumulative=-1, label=f'N={N} samples')
+                    histtype="step", lw=2, cumulative=-1, label=f'N={N} simulated samples')
 
     x = np.linspace(0.01, 500, 10000)
     xdata = xdata[:-1]
