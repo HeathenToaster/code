@@ -24,6 +24,7 @@ from scipy.signal import find_peaks
 import sys
 import time
 import warnings
+import matplotlib.ticker as mticker
 matplotlib.rcParams['axes.unicode_minus'] = False
 warnings.filterwarnings("ignore", category=matplotlib.cbook.mplDeprecation)
 startTimeNotebook = datetime.datetime.now()
@@ -432,7 +433,7 @@ def plot_BASEtrajectory(time, position, lickLeft, lickRight, maxminstep,
     return traj
 
 
-def plot_BASEtrajectoryV2(animal, session, time, goodPos, badPos, lickL, lickR,
+def plot_BASEtrajectoryV2(animal, session, time, running_Xs, idle_Xs, lickL, lickR,
                           rewardProbaBlock, blocks, barplotaxes,
                           xyLabels=[" ", " ", " ", " "],
                           title=[None], linewidth=1):
@@ -442,8 +443,8 @@ def plot_BASEtrajectoryV2(animal, session, time, goodPos, badPos, lickL, lickR,
                     color='grey', alpha=rewardProbaBlock[i]/250,
                     label="%reward: " + str(rewardProbaBlock[i])
                     if (i == 0 or i == 1) else "")
-    plt.plot(time, goodPos, label="run", color="dodgerblue", linewidth=1)
-    plt.plot(time, badPos, label="wait", color="orange", linewidth=1)
+    plt.plot(time, running_Xs, label="run", color="dodgerblue", linewidth=1)
+    plt.plot(time, idle_Xs, label="wait", color="orange", linewidth=1)
     plt.plot(time, [None if x == 0 else x for x in lickL],
              color="b", marker="o", markersize=1)
     plt.plot(time, [None if x == 0 else x for x in lickR],
@@ -1538,7 +1539,7 @@ def extract_runSpeedBin(dataPos, dataSpeed, dataTime, dataLickR, dataLickL, open
     stays = {}
     runs[animal, session] = {}
     stays[animal, session] = {}
-    position, speed, time, goodPos, badPos, goodSpeed, badSpeed, goodTime, badTime = ({bin: [] for bin in range(0, len(blocks))} for _ in range(9))
+    position, speed, time, running_Xs, idle_Xs, goodSpeed, badSpeed, goodTime, badTime = ({bin: [] for bin in range(0, len(blocks))} for _ in range(9))
     speedRunToRight, speedRunToLeft, XtrackRunToRight, XtrackRunToLeft, timeRunToRight, timeRunToLeft, timeStayInRight, timeStayInLeft, XtrackStayInRight, XtrackStayInLeft, TtrackStayInRight, TtrackStayInLeft, instantSpeedRight, instantSpeedLeft, maxSpeedRight, maxSpeedLeft, whenmaxSpeedRight, whenmaxSpeedLeft, wheremaxSpeedRight, wheremaxSpeedLeft, lick_arrivalRight, lick_drinkingRight, lick_waitRight, lick_arrivalLeft, lick_drinkingLeft, lick_waitLeft = ({bin: [] for bin in range(0, len(blocks))} for _ in range(26))
     rewardedLeft, rewardedRight = ({bin: [] for bin in range(0, len(blocks))} for _ in range(2))
 
@@ -1547,15 +1548,15 @@ def extract_runSpeedBin(dataPos, dataSpeed, dataTime, dataLickR, dataLickL, open
         speed[i] = np.array(dataSpeed[animal, session][i], dtype=float)
         time[i] = np.array(dataTime[animal, session][i], dtype=float)
 
-        goodPos[i] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(position[i], mask[animal, session][i])]]
-        badPos[i] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(position[i], mask[animal, session][i])]]
+        running_Xs[i] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(position[i], mask[animal, session][i])]]
+        idle_Xs[i] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(position[i], mask[animal, session][i])]]
         goodSpeed[i] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(speed[i], mask[animal, session][i])]]
         badSpeed[i] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(speed[i], mask[animal, session][i])]]
         goodTime[i] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(time[i], mask[animal, session][i])]]
         badTime[i] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(time[i], mask[animal, session][i])]]
 
-        stays[animal, session][i] = [[e[0], e[1], e[2], e[3], e[4]] if [e[0], e[1], e[2]] != [None, None, None] else 0 for e in [[i, j, k, l, m] for i, j, k, l, m in zip(goodPos[i], goodSpeed[i], goodTime[i], dataLickR[animal, session][i], dataLickL[animal, session][i])]]
-        runs[animal, session][i] = [[e[0], e[1], e[2], e[3], e[4]] if [e[0], e[1], e[2]] != [None, None, None] else 0 for e in [[i, j, k, l, m] for i, j, k, l, m in zip(badPos[i], badSpeed[i], badTime[i], openL[i], openR[i])]]
+        stays[animal, session][i] = [[e[0], e[1], e[2], e[3], e[4]] if [e[0], e[1], e[2]] != [None, None, None] else 0 for e in [[i, j, k, l, m] for i, j, k, l, m in zip(running_Xs[i], goodSpeed[i], goodTime[i], dataLickR[animal, session][i], dataLickL[animal, session][i])]]
+        runs[animal, session][i] = [[e[0], e[1], e[2], e[3], e[4]] if [e[0], e[1], e[2]] != [None, None, None] else 0 for e in [[i, j, k, l, m] for i, j, k, l, m in zip(idle_Xs[i], badSpeed[i], badTime[i], openL[i], openR[i])]]
 
         for run in split_a_list_at_zeros(runs[animal, session][i]):
             # calculate distance run as the distance between first and last value
@@ -1745,7 +1746,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
     binPositionX, binPositionY, binTime, binLickLeftX, binLickRightX, binSolenoid_ON_Left, binSolenoid_ON_Right = ({} for _ in range(7))
     leftBoundaryPeak, rightBoundaryPeak, kde = {}, {}, {}
     smoothMask, rawMask, binSpeed, binMask = {}, {}, {}, {}
-    goodPos, badPos, goodSpeed, badSpeed = {}, {}, {}, {}
+    running_Xs, idle_Xs, goodSpeed, badSpeed = {}, {}, {}, {}
     speedRunToRight,    speedRunToLeft,    XtrackRunToRight,    XtrackRunToLeft,    timeRunToRight,    timeRunToLeft,    timeStayInRight,    timeStayInLeft,    XtrackStayInRight,    XtrackStayInLeft,    TtrackStayInRight,    TtrackStayInLeft,    instantSpeedRight,    instantSpeedLeft,    maxSpeedRight,    maxSpeedLeft,    whenmaxSpeedRight,    whenmaxSpeedLeft,    wheremaxSpeedRight,    wheremaxSpeedLeft,    lick_arrivalRight,    lick_drinkingRight,    lick_waitRight,    lick_arrivalLeft,    lick_drinkingLeft,    lick_waitLeft = ({} for _ in range(26))
     speedRunToRightBin, speedRunToLeftBin, XtrackRunToRightBin, XtrackRunToLeftBin, timeRunToRightBin, timeRunToLeftBin, timeStayInRightBin, timeStayInLeftBin, XtrackStayInRightBin, XtrackStayInLeftBin, TtrackStayInRightBin, TtrackStayInLeftBin, instantSpeedRightBin, instantSpeedLeftBin, maxSpeedRightBin, maxSpeedLeftBin, whenmaxSpeedRightBin, whenmaxSpeedLeftBin, wheremaxSpeedRightBin, wheremaxSpeedLeftBin, lick_arrivalRightBin, lick_drinkingRightBin, lick_waitRightBin, lick_arrivalLeftBin, lick_drinkingLeftBin, lick_waitLeftBin = ({} for _ in range(26))
     nb_runs_to_rightBin, nb_runs_to_leftBin, nb_runsBin, total_trials = {}, {}, {}, {}
@@ -1944,8 +1945,8 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
                 smoothMask[animal, session] = removeSplits_Mask(rawMask, rawPositionX, animal, session, params[animal, session]["treadmillDist"])
                 binMask[animal, session] = fixSplittedRunsMask(animal, session, bin_session(animal, session, smoothMask, rawTime, blocks), blocks)
             smoothMask[animal, session] = stitch([binMask[animal, session]])[0]
-            goodPos[animal, session] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(rawPositionX[animal, session], smoothMask[animal, session])]]
-            badPos[animal, session] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(rawPositionX[animal, session], smoothMask[animal, session])]]
+            running_Xs[animal, session] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(rawPositionX[animal, session], smoothMask[animal, session])]]
+            idle_Xs[animal, session] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(rawPositionX[animal, session], smoothMask[animal, session])]]
             goodSpeed[animal, session] = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(rawSpeed[animal, session], smoothMask[animal, session])]]
             badSpeed[animal, session] = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(rawSpeed[animal, session], smoothMask[animal, session])]]
             binSpeed[animal, session] = reCutBins(rawSpeed[animal, session], binMask[animal, session])
@@ -2009,7 +2010,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
                 ax00 = fig.add_subplot(gs[0:7, 0:4])
                 ax00 = plot_peak(rawPositionX[animal, session], animal, session, leftBoundaryPeak[animal, session], rightBoundaryPeak[animal, session], kde[animal, session], [0.05, 0, 0], [0, 120, 0],  marker=[""], xyLabels=["Position (cm)", "%"])
                 ax01 = fig.add_subplot(gs[0:7, 5:75])
-                ax01 = plot_BASEtrajectoryV2(animal, session, rawTime[animal, session], goodPos[animal, session], badPos[animal, session], rawLickLeftX[animal, session], rawLickRightX[animal, session], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration'], 50, 90, 0, 22, 10],  xyLabels=["Time (min)", " ", "Position (cm)", "", "", "", 14, 12], title=[session, "", " ", "", 16], linewidth=[1.5])
+                ax01 = plot_BASEtrajectoryV2(animal, session, rawTime[animal, session], running_Xs[animal, session], idle_Xs[animal, session], rawLickLeftX[animal, session], rawLickRightX[animal, session], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration'], 50, 90, 0, 22, 10],  xyLabels=["Time (min)", " ", "Position (cm)", "", "", "", 14, 12], title=[session, "", " ", "", 16], linewidth=[1.5])
                 plt.plot([0, params[animal, session]['sessionDuration']], [params[animal, session]["boundaries"][0], params[animal, session]["boundaries"][0]], ":", color='k', alpha=0.5)
                 plt.plot([0, params[animal, session]['sessionDuration']], [params[animal, session]["boundaries"][1], params[animal, session]["boundaries"][1]], ":", color='k', alpha=0.5)
 
@@ -2181,7 +2182,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             binPositionX, binPositionY, binTime, binLickLeftX, binLickRightX, binSolenoid_ON_Left, binSolenoid_ON_Right = ({} for i in range(7))
             leftBoundaryPeak, rightBoundaryPeak, kde = {}, {}, {}
             smoothMask, rawMask, binSpeed, binMask = {}, {}, {}, {}
-            goodPos, badPos, goodSpeed, badSpeed = {}, {}, {}, {}
+            running_Xs, idle_Xs, goodSpeed, badSpeed = {}, {}, {}, {}
             speedRunToRight,    speedRunToLeft,    XtrackRunToRight,    XtrackRunToLeft,    timeRunToRight,    timeRunToLeft,    timeStayInRight,    timeStayInLeft,    XtrackStayInRight,    XtrackStayInLeft,    TtrackStayInRight,    TtrackStayInLeft,    instantSpeedRight,    instantSpeedLeft,    maxSpeedRight,    maxSpeedLeft,    whenmaxSpeedRight,    whenmaxSpeedLeft,    wheremaxSpeedRight,    wheremaxSpeedLeft,    lick_arrivalRight,    lick_drinkingRight,    lick_waitRight,    lick_arrivalLeft,    lick_drinkingLeft,    lick_waitLeft    = ({} for i in range(26))
             speedRunToRightBin, speedRunToLeftBin, XtrackRunToRightBin, XtrackRunToLeftBin, timeRunToRightBin, timeRunToLeftBin, timeStayInRightBin, timeStayInLeftBin, XtrackStayInRightBin, XtrackStayInLeftBin, TtrackStayInRightBin, TtrackStayInLeftBin, instantSpeedRightBin, instantSpeedLeftBin, maxSpeedRightBin, maxSpeedLeftBin, whenmaxSpeedRightBin, whenmaxSpeedLeftBin, wheremaxSpeedRightBin, wheremaxSpeedLeftBin, lick_arrivalRightBin, lick_drinkingRightBin, lick_waitRightBin, lick_arrivalLeftBin, lick_drinkingLeftBin, lick_waitLeftBin = ({} for i in range(26))
             nb_runs_to_rightBin, nb_runs_to_leftBin, nb_runsBin, total_trials = {}, {}, {}, {}
@@ -2206,7 +2207,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
     binPositionX, binPositionY, binTime, binLickLeftX, binLickRightX, binSolenoid_ON_Left, binSolenoid_ON_Right = ({} for i in range(7))
     leftBoundaryPeak, rightBoundaryPeak, kde = {}, {}, {}
     smoothMask, rawMask, binSpeed, binMask = {}, {}, {}, {}
-    goodPos, badPos, goodSpeed, badSpeed = {}, {}, {}, {}
+    running_Xs, idle_Xs, goodSpeed, badSpeed = {}, {}, {}, {}
     speedToRightCharacteristics, speedToLeftCharacteristics, speedToRightCharacteristicsBin, speedToLeftCharacteristicsBin = {}, {}, {}, {}
     limspeedRunToRight, limspeedRunToLeft, limstayRight, limstayLeft, all_speedRunToRight, all_speedRunToLeft, all_timeRunToRight, all_timeRunToLeft, all_timeStayInRight, all_timeStayInLeft, all_TtrackStayInRight, all_TtrackStayInLeft, all_instantSpeedRight, all_instantSpeedLeft, all_maxSpeedRight, all_maxSpeedLeft, good_speedRunToRight, good_speedRunToLeft, good_XtrackRunToRight, good_XtrackRunToLeft, good_timeRunToRight, good_timeRunToLeft, bad_speedRunToRight, bad_speedRunToLeft, bad_XtrackRunToRight,bad_XtrackRunToLeft, bad_timeRunToRight, bad_timeRunToLeft, good_instantSpeedRight, good_instantSpeedLeft, good_maxSpeedRight, good_maxSpeedLeft, bad_instantSpeedRight, bad_instantSpeedLeft, bad_maxSpeedRight, bad_maxSpeedLeft, good_timeStayInRight, good_timeStayInLeft, good_XtrackStayInRight, good_XtrackStayInLeft, good_TtrackStayInRight, good_TtrackStayInLeft, bad_timeStayInRight, bad_timeStayInLeft, bad_XtrackStayInRight, bad_XtrackStayInLeft, bad_TtrackStayInRight, bad_TtrackStayInLeft, lick_arrivalRight, lick_drinkingRight, lick_waitRight, lick_arrivalLeft, lick_drinkingLeft, lick_waitLeft = ({} for i in range(54))
     limspeedRunToRightBin, limspeedRunToLeftBin, limstayRightBin, limstayLeftBin, all_speedRunToRightBin, all_speedRunToLeftBin, all_timeRunToRightBin, all_timeRunToLeftBin, all_timeStayInRightBin, all_timeStayInLeftBin, all_TtrackStayInRightBin, all_TtrackStayInLeftBin, all_instantSpeedRightBin, all_instantSpeedLeftBin, all_maxSpeedRightBin, all_maxSpeedLeftBin, good_speedRunToRightBin, good_speedRunToLeftBin, good_XtrackRunToRightBin, good_XtrackRunToLeftBin, good_timeRunToRightBin, good_timeRunToLeftBin, bad_speedRunToRightBin, bad_speedRunToLeftBin, bad_XtrackRunToRightBin, bad_XtrackRunToLeftBin, bad_timeRunToRightBin, bad_timeRunToLeftBin, good_instantSpeedRightBin, good_instantSpeedLeftBin, good_maxSpeedRightBin, good_maxSpeedLeftBin, bad_instantSpeedRightBin, bad_instantSpeedLeftBin, bad_maxSpeedRightBin, bad_maxSpeedLeftBin, good_timeStayInRightBin, good_timeStayInLeftBin, good_XtrackStayInRightBin, good_XtrackStayInLeftBin, good_TtrackStayInRightBin, good_TtrackStayInLeftBin, bad_timeStayInRightBin, bad_timeStayInLeftBin, bad_XtrackStayInRightBin, bad_XtrackStayInLeftBin, bad_TtrackStayInRightBin, bad_TtrackStayInLeftBin, lick_arrivalRightBin, lick_drinkingRightBin, lick_waitRightBin, lick_arrivalLeftBin, lick_drinkingLeftBin, lick_waitLeftBin = ({} for i in range(54))
@@ -2402,8 +2403,8 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
                 smoothMask[animal, session] = removeSplits_Mask(rawMask, rawPositionX, animal, session, params[animal, session]["treadmillDist"])
                 binMask[animal,session]     = fixSplittedRunsMask(animal, session, bin_session(animal, session, smoothMask, rawTime, blocks), blocks)
             smoothMask[animal, session] = stitch([binMask[animal, session]])[0]
-            goodPos[animal,session]     = [val[0] if val[1] == True  else None for val in [[i, j] for i, j in zip(rawPositionX[animal,session], smoothMask[animal,session])]]
-            badPos[animal,session]      = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(rawPositionX[animal,session], smoothMask[animal,session])]]
+            running_Xs[animal,session]     = [val[0] if val[1] == True  else None for val in [[i, j] for i, j in zip(rawPositionX[animal,session], smoothMask[animal,session])]]
+            idle_Xs[animal,session]      = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(rawPositionX[animal,session], smoothMask[animal,session])]]
             goodSpeed[animal,session]   = [val[0] if val[1] == True  else None for val in [[i, j] for i, j in zip(rawSpeed[animal,session], smoothMask[animal,session])]]
             badSpeed[animal,session]    = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(rawSpeed[animal,session], smoothMask[animal,session])]]
 
@@ -2431,7 +2432,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
             ax00 = fig.add_subplot(gs[0:7, 0:4])
             ax00 = plot_peak(rawPositionX[animal, session], animal, session, leftBoundaryPeak[animal, session], rightBoundaryPeak[animal, session], kde[animal, session],[0.05, 0, 0],[0, 120 ,0],  marker=[""], xyLabels=["Position (cm)", "%"])
             ax01 = fig.add_subplot(gs[0:7, 5:75])
-            ax01 = plot_BASEtrajectoryV2(animal, session, rawTime[animal, session], goodPos[animal, session], badPos[animal, session], rawLickLeftX[animal, session], rawLickRightX[animal, session], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration'], 50, 90, 0, 22, 10],  xyLabels=["Time (min)", "", "Position (cm)", "", "", "", 14, 12], title=[session, "", "", "", 16], linewidth=[1.5])
+            ax01 = plot_BASEtrajectoryV2(animal, session, rawTime[animal, session], running_Xs[animal, session], idle_Xs[animal, session], rawLickLeftX[animal, session], rawLickRightX[animal, session], params[animal, session]['rewardProbaBlock'], params[animal, session]['blocks'], barplotaxes=[0, params[animal, session]['sessionDuration'], 50, 90, 0, 22, 10],  xyLabels=["Time (min)", "", "Position (cm)", "", "", "", 14, 12], title=[session, "", "", "", 16], linewidth=[1.5])
             plt.plot([0, params[animal, session]['sessionDuration']], [params[animal, session]["boundaries"][0], params[animal, session]["boundaries"][0]], ":", color='k', alpha=0.5)
             plt.plot([0, params[animal, session]['sessionDuration']], [params[animal, session]["boundaries"][1], params[animal, session]["boundaries"][1]], ":", color='k', alpha=0.5)
 
@@ -2539,7 +2540,7 @@ def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, 
             binPositionX, binPositionY, binTime, binLickLeftX, binLickRightX, binSolenoid_ON_Left, binSolenoid_ON_Right = ({} for i in range(7))
             leftBoundaryPeak, rightBoundaryPeak, kde = {}, {}, {}
             smoothMask, rawMask, binSpeed, binMask = {}, {}, {}, {}
-            goodPos, badPos, goodSpeed, badSpeed = {}, {}, {}, {}
+            running_Xs, idle_Xs, goodSpeed, badSpeed = {}, {}, {}, {}
             speedToRightCharacteristics, speedToLeftCharacteristics, speedToRightCharacteristicsBin, speedToLeftCharacteristicsBin = {}, {}, {}, {}
             limspeedRunToRight, limspeedRunToLeft, limstayRight, limstayLeft, all_speedRunToRight, all_speedRunToLeft, all_timeRunToRight, all_timeRunToLeft, all_timeStayInRight, all_timeStayInLeft, all_TtrackStayInRight, all_TtrackStayInLeft, all_instantSpeedRight, all_instantSpeedLeft, all_maxSpeedRight, all_maxSpeedLeft, good_speedRunToRight, good_speedRunToLeft, good_XtrackRunToRight, good_XtrackRunToLeft, good_timeRunToRight, good_timeRunToLeft, bad_speedRunToRight, bad_speedRunToLeft, bad_XtrackRunToRight,bad_XtrackRunToLeft, bad_timeRunToRight, bad_timeRunToLeft, good_instantSpeedRight, good_instantSpeedLeft, good_maxSpeedRight, good_maxSpeedLeft, bad_instantSpeedRight, bad_instantSpeedLeft, bad_maxSpeedRight, bad_maxSpeedLeft, good_timeStayInRight, good_timeStayInLeft, good_XtrackStayInRight, good_XtrackStayInLeft, good_TtrackStayInRight, good_TtrackStayInLeft, bad_timeStayInRight, bad_timeStayInLeft, bad_XtrackStayInRight, bad_XtrackStayInLeft, bad_TtrackStayInRight, bad_TtrackStayInLeft, lick_arrivalRight, lick_drinkingRight, lick_waitRight, lick_arrivalLeft, lick_drinkingLeft, lick_waitLeft = ({} for i in range(54))
             limspeedRunToRightBin, limspeedRunToLeftBin, limstayRightBin, limstayLeftBin, all_speedRunToRightBin, all_speedRunToLeftBin, all_timeRunToRightBin, all_timeRunToLeftBin, all_timeStayInRightBin, all_timeStayInLeftBin, all_TtrackStayInRightBin, all_TtrackStayInLeftBin, all_instantSpeedRightBin, all_instantSpeedLeftBin, all_maxSpeedRightBin, all_maxSpeedLeftBin, good_speedRunToRightBin, good_speedRunToLeftBin, good_XtrackRunToRightBin, good_XtrackRunToLeftBin, good_timeRunToRightBin, good_timeRunToLeftBin, bad_speedRunToRightBin, bad_speedRunToLeftBin, bad_XtrackRunToRightBin, bad_XtrackRunToLeftBin, bad_timeRunToRightBin, bad_timeRunToLeftBin, good_instantSpeedRightBin, good_instantSpeedLeftBin, good_maxSpeedRightBin, good_maxSpeedLeftBin, bad_instantSpeedRightBin, bad_instantSpeedLeftBin, bad_maxSpeedRightBin, bad_maxSpeedLeftBin, good_timeStayInRightBin, good_timeStayInLeftBin, good_XtrackStayInRightBin, good_XtrackStayInLeftBin, good_TtrackStayInRightBin, good_TtrackStayInLeftBin, bad_timeStayInRightBin, bad_timeStayInLeftBin, bad_XtrackStayInRightBin, bad_XtrackStayInLeftBin, bad_TtrackStayInRightBin, bad_TtrackStayInLeftBin, lick_arrivalRightBin, lick_drinkingRightBin, lick_waitRightBin, lick_arrivalLeftBin, lick_drinkingLeftBin, lick_waitLeftBin = ({} for i in range(54))
@@ -3427,17 +3428,41 @@ def plotseqinterpool(axs, input, targetlist, var, dat, axes=[0, 50, 0, 120]):
 # WAITING TIME MODEL
 
 
-# plot session track without analysis files
-def dirty_TRAJ(root, animal, session, params, barplotaxes,
-                xyLabels=["", ""], title=None, ax=None):
+# separate the data into time and reward bins
+def prepare_data(sequence, animalList, sessionList, memsize=3, time_bins=6):
+    """prepare data for fitting
+    cut the data into time bins and reward bins"""
+    bin_size = 3600/time_bins
+    targetlist = generate_targetList(memsize)[::-1]
+    temp_data = {}
+    for time_bin in range(time_bins):
+        temp_data[time_bin] = {}
+        for animal in animalList:
+            temp_data[time_bin][animal] = {k:[] for k in meankeys(targetlist)}
+            for session in matchsession(animal, sessionList):
+                temp_data[time_bin][animal] = combine_dict(temp_data[time_bin][animal], get_waiting_times(sequence[animal, session], memsize=memsize, filter=[time_bin*bin_size, (time_bin+1)*bin_size]))
+    
+    data = {}
+    for animal in animalList:
+        data[animal] = np.zeros((time_bins, len(meankeys(targetlist)))).tolist()
+        for avg_bin, avg in enumerate(meankeys(targetlist)):  # 1 -> 0
+            for time_bin in range(time_bins):
+                data[animal][time_bin][avg_bin] = np.asarray(temp_data[time_bin][animal][avg])
+    return data
 
+
+# plot session track without analysis files
+def plot_animal_trajectory(root, animal, session, params, barplotaxes,
+                xyLabels=["", ""], title=None, ax=None):
+    ''' read position file and plot animal trajectory
+    '''
     if ax is None: ax = plt.gca()
     time = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[3])[:90000]
     pos  = read_csv_pandas((root+os.sep+animal+os.sep+"Experiments"+os.sep + session + os.sep+session+".position"), Col=[4])[:90000]/11
     mask = stitch([get_from_pickle(root, animal, session, name="mask.p")])[0]   
 
-    goodPos = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(pos, mask)]]
-    badPos = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(pos, mask)]]
+    running_Xs = [val[0] if val[1] == True else None for val in [[i, j] for i, j in zip(pos, mask)]]
+    idle_Xs = [val[0] if val[1] == False else None for val in [[i, j] for i, j in zip(pos, mask)]]
 
     for i in range(0, len(params['blocks'])):
         ax.axvspan(params['blocks'][i][0], params['blocks'][i][1],
@@ -3445,18 +3470,20 @@ def dirty_TRAJ(root, animal, session, params, barplotaxes,
                     label="%reward: " + str(params['rewardProbaBlock'][i])
                     if (i == 0 or i == 1) else "")
 
-    ax.plot(time, goodPos, label="run", color="dodgerblue")
-    ax.plot(time, badPos, label="wait", color="orange")
+    ax.plot(time, running_Xs, label="run", color="dodgerblue")
+    ax.plot(time, idle_Xs, label="wait", color="orange")
 
     ax.set_xlabel(xyLabels[0])
     ax.set_ylabel(xyLabels[1])
     ax.set_xlim([barplotaxes[0], barplotaxes[1]])
     ax.set_ylim([barplotaxes[2], barplotaxes[3]])
+    ax.set_xticks(np.arange(barplotaxes[0], barplotaxes[1]+1, 300))
+    ax.set_xticklabels(np.arange(0, 61, 5))
     return ax
 
 
 # plot variable median/mean fir each blockFdodger
-def plot_figBinNEW(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
+def plot_median_per_bin(data, rewardProbaBlock, blocks, barplotaxes, color, stat,
                 xyLabels=[" ", " ", " ", " "], title="", scatter=False, ax=False):
     warnings.simplefilter("ignore", category=RuntimeWarning)
     if not ax:
@@ -3499,6 +3526,7 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     # get the 0-1 rewards and times for each block
     rewards = np.ones((12, int(max(c))))*.5
     times = np.ones((12, int(max(c))))*.5
+    last_rewards_from_previous_block = np.ones((12, 2))*.5
 
     for i in range(12):
         rw, trw = [], []
@@ -3506,6 +3534,10 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
             if input[i][a][1] == "run":
                 rw.append(input[i][a][2])
                 trw.append(input[i][a][0])
+        # cosmetic, get the last two rewards of the previous block before the first rewards of the next block
+        if i < 11:
+            last_rewards_from_previous_block[i+1] = rw[-2:]
+
         rewards[i, 0:len(rw)] = rw
         times[i, 0:len(trw)] = trw
 
@@ -3522,6 +3554,16 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     X, Y = np.meshgrid(x, y)
     ax.scatter(X,Y,s=200, marker='o', c=rewards, cmap=cmap, vmin=0, vmax=1, edgecolors=edges, linewidths=1)
 
+    xlast = [-2, -1]
+    ylast = np.arange(12)[::-1]
+    Xlast, Ylast = np.meshgrid(xlast, ylast)
+    ax.scatter(Xlast, Ylast, s=200, marker='o', c=last_rewards_from_previous_block, cmap=cmap, vmin=0, vmax=1, edgecolors=edges, linewidths=1, alpha=0.35)
+
+    # # plot a line between time blocks
+    # for i in range(1, 11, 2):
+    #     ax.axhline(i+0.5, xmin=0.045, color='k', linewidth=1)
+
+    
 
     ax.set_xticks([])
     ax.set_yticks(np.arange(12))
@@ -3682,6 +3724,71 @@ def combine_dict(d1, d2):
     keys = d1.keys()
     values = [np.concatenate([d1[k], d2[k]]) for k in keys]
     return dict(zip(keys, values))
+
+
+def log_tick_formatter(val, pos=None):
+    '''Return the string representation of 10^val'''
+    return r'$10^{%s}$' % val
+
+def plot_polygon(x, y, z, ax, color='k', limitZ=-3, limitX=-1):
+    '''plot the distribution of the data as a polygon'''
+    z[-1] = limitZ  # force last point to be at 10^-3 instead of -inf
+    x[0] = limitX  # force first point to be at 10^-1 instead of 0
+    for i in range(len(x)-1):
+        ax.plot([x[i], x[i+1]], [y, y], [z[i], z[i]], color=color)
+        ax.plot([x[i+1], x[i+1]], [y, y], [z[i], z[i+1]], color=color)
+
+def plot_full_distribution(data, animal, plot_fit=False, color='r'):
+    '''plot the full distribution of the data'''
+    ######## log scale cheat to have 3d log scale plots
+    ###
+    # NOT SAME NUMBER OF OBSERVATIONS IN EACH CURVE, BUT SAME NORMALIZATION ???
+    ###
+    targetlist = generate_targetList(3)[::-1]
+    fig, axs = plt.subplots(1, 6, figsize=(30, 5), subplot_kw={'projection': '3d'})
+
+    for time_bin in range(6):
+        x, y = [[] for _ in range(len(meankeys(targetlist)))], [[] for _ in range(len(meankeys(targetlist)))]
+        for avg_bin, avg in enumerate(meankeys(targetlist)):
+            bins = np.linspace(0.01, data[animal][time_bin][avg_bin].max(), int(max(data[animal][time_bin][avg_bin])))
+            y[avg_bin], x[avg_bin] = np.histogram(data[animal][time_bin][avg_bin], bins=bins, weights=np.ones_like(data[animal][time_bin][avg_bin]) / len(data[animal][time_bin][avg_bin]))
+
+            y[avg_bin] = np.cumsum(y[avg_bin])
+            y[avg_bin] = np.insert(y[avg_bin], 0, 0)
+            y[avg_bin] /= np.max(y[avg_bin])
+            y[avg_bin] = 1-y[avg_bin]
+
+            _color = 'k' if time_bin == 0 and avg_bin == 1 else color
+            plot_polygon(np.log10(x[avg_bin]), avg, np.log10(y[avg_bin]), axs[time_bin], color=_color)
+
+            if plot_fit:
+                (alpha, theta, gamma, alpha_prime, thetaprime, gamma_prime, alpha_second, thetasecond, gamma_second), loss = modelwald_fit(data[animal])
+                _x = np.linspace(0, 300, 1000)
+                _y = np.ones_like(_x)*avg
+                _z = 1-Wald_cdf(_x, alpha + time_bin*alpha_prime + avg_bin*alpha_second, 0, gamma + time_bin*gamma_prime + avg_bin*gamma_second)
+                # (_alpha, _theta, _gamma), lossWald = wald_fit(exampledata[animal][time_bin][avg_bin])
+                # _z = 1-Wald_cdf(_x, _alpha, _theta, _gamma)
+                _x = np.log10(_x)
+                _z = np.log10(_z)
+
+                _x[_z < -3] = np.nan
+                _y[_z < -3] = np.nan
+                _z[_z < -3] = -3
+                axs[time_bin].plot(_x, _y, _z, color=color, alpha=1, linewidth=2, ls='--')
+
+        axs[time_bin].set(xlim=(-1, 3), ylim=(1.2, -.1), zlim=(-3, 0.1))
+        axs[time_bin].set_xticks([-1, 0, 1, 2, 3])
+        axs[time_bin].set_xticklabels(['-1', '0', '1', '2', '3'])
+        axs[time_bin].set_yticks([1, .67, .33, 0])
+        axs[time_bin].set_yticklabels(['1', '0.67', '0.33', '0'])
+        axs[time_bin].set_zticks([0, -1, -2, -3])
+        axs[time_bin].set_zticklabels(['0', '-1', '-2', '-3'])
+        _t = r'$t$'
+        axs[time_bin].set_title(f'time bin {_t} = {time_bin*10}-{(time_bin+1)*10} min')
+        axs[time_bin].view_init(25, 300)
+        axs[time_bin].zaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
+        axs[time_bin].xaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
+    axs[0].set(xlabel='log idle time duration', ylabel=r'Reward history $R$', zlabel='log 1-CDF')
 
 ######################################################
 
