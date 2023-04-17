@@ -3794,31 +3794,28 @@ def plot_full_distribution(data, animal, plot_fit=False, color='r'):
 
 def plot_DDMexample(mean, std, A, t0, N=100, title=None):
     """plot example of DDM with specified parameters"""
+
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-
-    # np.random.seed(0)
-    trials = [generate_trials(mean, std, A, t0) for _ in range(N)]
-
-    rnd = np.random.randint(0, len(trials))
-    for idx, dv in enumerate(trials): 
-        dv[-1] = A
-        if idx == rnd:
-            ax.plot(dv, c='k', lw=1.5, zorder=4)
-        ax.plot(dv, c='orange', alpha=.5, zorder=3)
+    trials = [generate_trials(mean, std, A, 0) for _ in range(N)]
     
-    waits = np.array([len(t) for t in trials], dtype=np.float64)
+    example_plot = True
+    for dv in trials: 
+        dv[-1] = A
+        x = np.arange(len(dv))/25
+        y = dv
+        if len(y) > 5*25 and example_plot:
+            ax.plot(x, y, c='k', lw=1.5, zorder=4)
+            ax.annotate(r'$t_f$', (len(y)/25, A-2), (0, 1), xycoords="data", textcoords="offset points", color="k", zorder=4, fontsize=14)
+            example_plot = False
+        ax.plot(x, y, c='orange', alpha=.5, zorder=3)
+    
+    waits = np.array([len(t)/25 for t in trials], dtype=np.float64)
 
-    bins = np.linspace(0, waits.max(), int(max(waits)))
-    ax.hist(waits, bins=bins, color='k', bottom=A,
-                    alpha=.5, zorder=4, histtype="step", lw=2,
-                    # weights=np.ones_like(waits) / len(waits),
-                    )
-
-    waitmean = A / mean * np.tanh(mean * A) + t0
-    ax.plot(np.linspace(t0, waitmean, int(waitmean)+1), A / waitmean * np.arange(waitmean), c="r", zorder=4)
-    ax.annotate(r'$v$', ((t0+waitmean)/2-1, (A/2)+1), (0, 1), xycoords="data", textcoords="offset points", color="r", zorder=4, fontsize=14)
-
-    ax.axhline(0, xmin=t0, c="k", ls="--", zorder=5, lw=2.5)
+    waitmean = A / mean * np.tanh(mean * A)  #  + t0
+    ax.plot(np.linspace(0, waitmean/25, int(waitmean)+1), A / waitmean * np.arange(waitmean), c="r", zorder=4)
+    ax.annotate(r'$v$', ((waitmean/25)/2-1, (A/2)+1), (0, 1), xycoords="data", textcoords="offset points", color="r", zorder=4, fontsize=14)
+    # ax.spines['left'].set_position(('data', t0))
+    # ax.axhline(0, xmin=t0, c="k", ls="--", zorder=5, lw=2.5)
     ax.axhline(A, c='c', zorder=5, lw=2.5)
     ax.set_yticks([0, A])
     ax.set_yticklabels([0, r'$A$'])
@@ -3827,9 +3824,30 @@ def plot_DDMexample(mean, std, A, t0, N=100, title=None):
     ax.set_ylabel('dv')
     ax.set_title(title)
     ax.set_ylim(-10, 30)
-    ax.set_xlim(0, 100)
-    ax.plot((0, t0), (0, 0), c="g", zorder=5, lw=2.5)
-    ax.annotate(r'$t_0$', ((0+t0)/2, 1), (0, 1), xycoords="data", textcoords="offset points", color="g", zorder=4, fontsize=14)
+    ax.set_xlim(-2, 25)
+    ax.plot((0, -t0), (0, 0), c="g", zorder=5, lw=2.5)
+    ax.annotate(r'$t_0$', ((0-t0), 1), (0, 0), xycoords="data", textcoords="offset points", color="g", zorder=4, fontsize=14)
+
+
+    # inset distribution
+    l, b, h, w = 0.105, .55, .5, .85
+    ax1 = fig.add_axes([l, b, w, h])
+    mx = 300
+    bins = np.arange(0, mx+1, .5)
+    ax1.hist(waits, bins=bins, color='k',
+                    alpha=.5, zorder=4, histtype="step", lw=2,
+                    # cumulative=1, 
+                    density=True,
+                    weights=np.ones_like(waits) / len(waits),
+                    )
+                    
+    p, _ = wald_fit(waits)
+    x = np.linspace(0, 1000, 10000)
+    ax1.plot(x, Wald_pdf(x, *p), 'm-', label='Default')
+    ax1.set_ylim(0, 0.8)
+    ax1.set_xlim(-2, 25)
+    ax1.set_ylabel('PDF')
+    ax1.axis('off')
 
     # inset
     l, b, h, w = .7, .7, .25, .25
@@ -3839,12 +3857,14 @@ def plot_DDMexample(mean, std, A, t0, N=100, title=None):
                     cumulative=-1, density=True,
                     weights=np.ones_like(waits) / len(waits),
                     )
-    ax2.set_ylim(0.01, 1.1)
-    ax2.set_xlim(1, 100)
+    ax2.plot(x, 1-Wald_cdf(x, *p), 'm-', label='Default')
+    ax2.set_ylim(0.001, 1.1)
+    ax2.set_xlim(.1, 1000)
     ax2.set_ylabel('log 1-CDF')
     ax2.set_xlabel('log t')
     ax2.set_yscale('log')
     ax2.set_xscale('log')
+
 
 def generate_trials(mean, std, A, t0):
     """generate a single diffusion trial"""
@@ -4102,7 +4122,56 @@ def plot_wald_fitted(waits, p, ax=None, color='k'):
 
     return ax
 
+################################################
 
+def plot_parameter_evolution(p, axs=None, N_bins=6, N_avg=4):
+
+    (alpha, gamma, alpha_prime, gamma_prime, alpha_second, gamma_second) = p
+    ALPHA = np.zeros((N_bins, N_avg))
+    GAMMA = np.zeros((N_bins, N_avg))
+
+    for bin in range(N_bins):
+        for avg in range(N_avg):
+            ALPHA[bin, avg] = alpha + bin*alpha_prime + avg*alpha_second
+            GAMMA[bin, avg] = gamma + bin*gamma_prime + avg*gamma_second
+
+    if axs is None:
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
+
+    X, Y = np.meshgrid(np.arange(N_avg), np.arange(N_bins))
+    axs[0].plot_surface(X, Y, ALPHA, cmap='winter', edgecolor='none')
+    axs[0].set_title(r'Value of $\mathrm{A}$')
+    axs[0].set_xticks([0, 1, 2, 3])
+    axs[0].set_xticklabels(['1', '0.67', '0.33', '0'])
+    axs[0].set_xlabel('Reward history', labelpad=5)
+    axs[0].set_ylim([-0.5, 5.5])
+    axs[0].set_yticks([0, 1, 2, 3, 4, 5])
+    axs[0].set_yticklabels(['0-10', '10-20', '20-30', '30-40', '40-50', '50-60'], va='center', ha='left', rotation=-15)
+    axs[0].set_ylabel('Time bin', labelpad=15)
+    axs[0].set_zlabel(r'$\alpha$', labelpad=5)
+    axs[0].set_zlim([.8, 2.2])
+    axs[0].set_zticks([1, 1.5, 2])
+    axs[0].set_zticklabels(['1.0', '1.5', '2.0'])
+    axs[0].text(0., 5, 2., r"$\alpha R$: Effect of reward on $\mathrm{A}$", color='black', fontsize=12, zdir='x', zorder=10)
+    axs[0].text(3, 0.5, 1.2, r"$\alpha t$: Effect of time on $\mathrm{A}$", color='black', fontsize=12, zdir=(0, 6, 1), zorder=10)
+    axs[0].text(0, 0, 0.6, r"$\alpha_0$: Baseline $\mathrm{A}$", color='black', fontsize=12, zdir='x', zorder=10)
+
+    axs[1].plot_surface(X, Y, GAMMA, cmap='autumn', edgecolor='none')
+    axs[1].set_title(r'Value of $\Gamma$')
+    axs[1].set_xticks([0, 1, 2, 3])
+    axs[1].set_xticklabels(['1', '0.67', '0.33', '0'])
+    axs[1].set_xlabel('Reward history')
+    axs[1].set_ylim([-0.5, 5.5])
+    axs[1].set_yticks([0, 1, 2, 3, 4, 5])
+    axs[1].set_yticklabels(['0-10', '10-20', '20-30', '30-40', '40-50', '50-60'], va='center', ha='left', rotation=-15)
+    axs[1].set_ylabel('Time bin')
+    axs[1].set_zlabel(r'$\gamma$')
+    axs[1].set_zlim([.0, .6])
+    axs[1].set_zticks([.2, .4, .6, 0.8])
+    axs[1].set_zticklabels(['0.2', '0.4', '0.6', '0.8'])
+    axs[1].text(0, 5, 0, r"$\gamma R$: Effect of reward on $\Gamma$", color='black', fontsize=12, zdir=(4, 0, -.5), zorder=10)
+    axs[1].text(0, -1, .6, r"$\gamma t$: Effect of time on $\Gamma$", color='black', fontsize=12, zdir=(0, -10, .1), zorder=10)
+    axs[1].text(0, 0, 0.4, r"$\gamma_0$: Baseline $\Gamma$", color='black', fontsize=12, zdir='x', zorder=10)
 
 
 ################################################
