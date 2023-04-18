@@ -3450,6 +3450,29 @@ def prepare_data(sequence, animalList, sessionList, memsize=3, time_bins=6):
                 data[animal][time_bin][avg_bin] = np.asarray(temp_data[time_bin][animal][avg])
     return data
 
+# separate the data into time and reward bins for each session
+def prepare_data_by_session(sequence, animalList, sessionList, memsize=3, time_bins=6):
+    """prepare data for fitting
+    cut the data into time bins and reward bins for each session"""
+    bin_size = 3600/time_bins
+    targetlist = generate_targetList(memsize)[::-1]
+    temp_data = {}
+    for bin in range(time_bins):
+        temp_data[bin] = {}
+        for animal in animalList:
+            temp_data[bin][animal] = {key: {k:[] for k in meankeys(targetlist)} for key in matchsession(animal, sessionList)}
+            for session in matchsession(animal, sessionList):
+                temp_data[bin][animal][session] = combine_dict(temp_data[bin][animal][session], get_waiting_times(sequence[animal, session], memsize=memsize, filter=[bin*bin_size, (bin+1)*bin_size]))
+    
+    data = {}
+    for animal in animalList:
+        data[animal] = {}
+        for session in matchsession(animal, sessionList):
+            data[animal][session] = np.zeros((time_bins, len(meankeys(targetlist)))).tolist()
+            for i, avg in enumerate(meankeys(targetlist)):  # 1 -> 0
+                for bin in range(time_bins):
+                    data[animal][session][bin][i] = np.asarray(temp_data[bin][animal][session][avg])
+    return data
 
 # plot session track without analysis files
 def plot_animal_trajectory(root, animal, session, params, barplotaxes,
@@ -3866,6 +3889,51 @@ def plot_DDMexample(mean, std, A, t0, N=100, title=None):
     ax2.set_xscale('log')
 
 
+def plot_DDMexampleParams(mean, A):
+    ax = plt.gca()
+    N=250
+    t0=2
+    std=1
+    # np.random.seed(0)
+    trials = [generate_trials(mean, std, A, t0) for _ in range(N)]
+
+    rnd = np.random.randint(0, len(trials))
+    for idx, dv in enumerate(trials): 
+        dv[-1] = A
+        if idx == rnd:
+            ax.plot(dv, c='k', lw=2, zorder=5)
+        ax.plot(dv, c='orange', alpha=.5, zorder=3)
+        
+
+    waits = np.array([len(t) for t in trials], dtype=np.float64)
+
+    bins = np.linspace(0, waits.max(), int(max(waits)))
+    ax.hist(waits, bins=bins, color='k', bottom=A,
+                    alpha=.5, zorder=4, histtype="step", lw=2,
+                    weights=np.ones_like(waits) / len(waits)*25,
+                    )
+
+    p, _ = wald_fit(waits)
+    x = np.linspace(0, 1000, 10000)
+    ax.plot(x, (25*Wald_pdf(x, *p))+A, 'm-', label='Default')
+
+    waitmean = A / mean * np.tanh(mean * A) + t0
+    ax.plot(np.linspace(t0, waitmean, int(waitmean)+1), A / waitmean * np.arange(waitmean), c="r", zorder=4)
+    ax.annotate(r'$v$', ((t0+waitmean)/2-1, (A/2)+1), (0, 1), xycoords="data", textcoords="offset points", color="r", zorder=4)
+    ax.axhline(0, c="k", ls="--", zorder=4)
+    ax.axhline(A, c='c', zorder=4)
+    ax.set_yticks([0, A])
+    ax.set_yticklabels([0, r'$A$'])
+    ax.get_yticklabels()[1].set_color('c') 
+    ax.set_xlabel('t')
+    ax.set_ylabel('dv')
+    ax.set_title('')
+    ax.set_ylim(-10, 10)
+    ax.set_xlim(0, 100)
+    ax.plot((0, t0), (0, 0), c="g", zorder=4)
+    ax.annotate(r'$t_0$', ((0+t0)/2, 1), (0, 1), xycoords="data", textcoords="offset points", color="g", zorder=4)
+
+
 def generate_trials(mean, std, A, t0):
     """generate a single diffusion trial"""
     # np.random.seed(0)
@@ -4225,3 +4293,11 @@ def test_all_keys_between_themselves(losses, keys, ax=None):
                 ax.plot((i+2, j+2), (y, y), color='g')
                 ax.scatter((i+j+4)/2, y, color='g', marker=r'$\ast$')
                 c += 0.001
+
+def simple_progress_bar(current, total, animal, cond, bar_length=20):
+    '''simple progress bar for long running loops'''
+    fraction = current / total
+    arrow = int(fraction * bar_length - 1) * '-' + '>'
+    padding = int(bar_length - len(arrow)) * ' '
+    ending = '\n' if current >= .99*total else '\r'
+    print(f'{animal} {cond} Progress: [{arrow}{padding}] {int(fraction*100)}%  ', end=ending)
