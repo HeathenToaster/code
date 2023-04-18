@@ -3889,7 +3889,8 @@ def plot_DDMexample(mean, std, A, t0, N=100, title=None):
     ax2.set_xscale('log')
 
 
-def plot_DDMexampleParams(mean, A):
+def plot_DDMexampleParams(v, A):
+    mean = v
     ax = plt.gca()
     N=250
     t0=2
@@ -3929,7 +3930,7 @@ def plot_DDMexampleParams(mean, A):
     ax.set_ylabel('dv')
     ax.set_title('')
     ax.set_ylim(-10, 10)
-    ax.set_xlim(0, 100)
+    ax.set_xlim(0, 25)
     ax.plot((0, t0), (0, 0), c="g", zorder=4)
     ax.annotate(r'$t_0$', ((0+t0)/2, 1), (0, 1), xycoords="data", textcoords="offset points", color="g", zorder=4)
 
