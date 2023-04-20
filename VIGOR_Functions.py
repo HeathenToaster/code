@@ -3533,6 +3533,8 @@ def plot_median_per_bin(data, rewardProbaBlock, blocks, barplotaxes, color, stat
     ax.set_ylim([barplotaxes[2], barplotaxes[3]])
     return ax
     
+
+
 # raster of (non)rewarded trials, reward average selection, and idle time distribution plots
 def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     if ax is None: fig, ax = plt.subplots(1, 1, figsize=(10, 5))
@@ -3570,17 +3572,49 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
     edges = np.where(edges == 0.0, 'k', edges)
     edges = np.where(edges == '1.0', 'k', edges)
     edges = np.where(edges == '0.5', 'w', edges)
-    edges = [item for sublist in edges for item in sublist]
+    # edges = [item for sublist in edges for item in sublist]
+
+
+    markers = np.copy(rewards,)
+    markers = np.where(markers == 0.0, '$x$', markers)
+    markers = np.where(markers == '1.0', '$✓$', markers)
+    markers = np.where(markers == '0.5', '', markers)
+    # markers = [item for sublist in markers for item in sublist]
+    unique_markers = np.unique(markers)
+
 
     x = np.arange(max(c))
     y = np.arange(12)[::-1]
     X, Y = np.meshgrid(x, y)
-    ax.scatter(X,Y,s=200, marker='o', c=rewards, cmap=cmap, vmin=0, vmax=1, edgecolors=edges, linewidths=1)
+
+    for um in unique_markers:
+        mask = np.array(markers) == um
+        ax.scatter(X[mask], Y[mask], s=200, marker=um, c=rewards[mask], cmap=cmap, vmin=0, vmax=1, edgecolors=edges[mask], linewidths=1)
 
     xlast = [-2, -1]
     ylast = np.arange(12)[::-1]
     Xlast, Ylast = np.meshgrid(xlast, ylast)
-    ax.scatter(Xlast, Ylast, s=200, marker='o', c=last_rewards_from_previous_block, cmap=cmap, vmin=0, vmax=1, edgecolors=edges, linewidths=1, alpha=0.35)
+
+    lastedges = np.copy(last_rewards_from_previous_block,)
+    lastedges = np.where(lastedges == 0.0, 'k', lastedges)
+    lastedges = np.where(lastedges == '1.0', 'k', lastedges)
+    lastedges = np.where(lastedges == '0.5', 'w', lastedges)
+
+    lastmarkers = np.copy(last_rewards_from_previous_block,)
+    lastmarkers = np.where(lastmarkers == 0.0, '$x$', lastmarkers)
+    lastmarkers = np.where(lastmarkers == '1.0', '$✓$', lastmarkers)
+    lastmarkers = np.where(lastmarkers == '0.5', '', lastmarkers)
+
+
+
+    for um in unique_markers:
+        mask = np.array(lastmarkers) == um
+        ax.scatter(Xlast[mask], Ylast[mask], s=200, marker=um, 
+        c=last_rewards_from_previous_block[mask], 
+        cmap=cmap, vmin=0, vmax=1, 
+        edgecolors=lastedges[mask], 
+        linewidths=1, alpha=0.35)
+    # ax.scatter(Xlast, Ylast, s=200, marker='x', c=last_rewards_from_previous_block, cmap=cmap, vmin=0, vmax=1, edgecolors=edges, linewidths=1, alpha=0.35)
 
     # # plot a line between time blocks
     # for i in range(1, 11, 2):
@@ -3671,6 +3705,9 @@ def plot_rewards(data, avg, memsize=3, ax=None, filter=[0, 3600]):
 
     return nextwait
 
+
+
+
 def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None, label=''):
     if ax is not None:
         mx = 300
@@ -3694,8 +3731,8 @@ def plot_rewards_distribution(nextwait, avg, color, memsize=3, ax=None, label=''
                     cumulative=-1, 
                     label=label)
         ax[1].set_title(f"Log-log Idle time distribution after {avg}\nrewards obtained in 0-10 min")
-        ax[1].set_xlabel("Idle time (s)")
-        ax[1].set_ylabel("1-CDF")
+        ax[1].set_xlabel("log(Idle time) (s)")
+        ax[1].set_ylabel("log(1-CDF)")
         ax[1].set_yscale('log')
         ax[1].set_xscale('log')
         ax[1].set_xlim(0.1, 1000)
@@ -3749,69 +3786,59 @@ def combine_dict(d1, d2):
     return dict(zip(keys, values))
 
 
-def log_tick_formatter(val, pos=None):
-    '''Return the string representation of 10^val'''
-    return r'$10^{%s}$' % val
+# def log_tick_formatter(val, pos=None):
+#     '''Return the string representation of 10^val'''
+#     return r'$10^{%s}$' % val
 
-def plot_polygon(x, y, z, ax, color='k', limitZ=-3, limitX=-1):
-    '''plot the distribution of the data as a polygon'''
-    z[-1] = limitZ  # force last point to be at 10^-3 instead of -inf
-    x[0] = limitX  # force first point to be at 10^-1 instead of 0
-    for i in range(len(x)-1):
-        ax.plot([x[i], x[i+1]], [y, y], [z[i], z[i]], color=color)
-        ax.plot([x[i+1], x[i+1]], [y, y], [z[i], z[i+1]], color=color)
+# def plot_polygon(x, y, z, ax, color='k', limitZ=-3, limitX=-1):
+#     '''plot the distribution of the data as a polygon'''
+#     z[-1] = limitZ  # force last point to be at 10^-3 instead of -inf
+#     x[0] = limitX  # force first point to be at 10^-1 instead of 0
+#     for i in range(len(x)-1):
+#         ax.plot([x[i], x[i+1]], [y, y], [z[i], z[i]], color=color)
+#         ax.plot([x[i+1], x[i+1]], [y, y], [z[i], z[i+1]], color=color)
 
-def plot_full_distribution(data, animal, plot_fit=False, color='r'):
+def plot_full_distribution(data, animal, plot_fit=False, N_bins=6, N_avg=4):
     '''plot the full distribution of the data'''
-    ######## log scale cheat to have 3d log scale plots
     ###
     # NOT SAME NUMBER OF OBSERVATIONS IN EACH CURVE, BUT SAME NORMALIZATION ???
     ###
-    targetlist = generate_targetList(3)[::-1]
-    fig, axs = plt.subplots(1, 6, figsize=(30, 5), subplot_kw={'projection': '3d'})
 
-    for time_bin in range(6):
-        x, y = [[] for _ in range(len(meankeys(targetlist)))], [[] for _ in range(len(meankeys(targetlist)))]
-        for avg_bin, avg in enumerate(meankeys(targetlist)):
-            bins = np.linspace(0.01, data[animal][time_bin][avg_bin].max(), int(max(data[animal][time_bin][avg_bin])))
-            y[avg_bin], x[avg_bin] = np.histogram(data[animal][time_bin][avg_bin], bins=bins, weights=np.ones_like(data[animal][time_bin][avg_bin]) / len(data[animal][time_bin][avg_bin]))
+    def _plot_wald_fitted(waits, p, ax=None, color='k', plot_fit=True, label='', lw=2):
+        """plot fitted wald distribution without fitting"""
+        if ax is None: ax = plt.gca()
+        waits = np.asarray(waits)
 
-            y[avg_bin] = np.cumsum(y[avg_bin])
-            y[avg_bin] = np.insert(y[avg_bin], 0, 0)
-            y[avg_bin] /= np.max(y[avg_bin])
-            y[avg_bin] = 1-y[avg_bin]
+        bins=np.linspace(0, waits.max(), int(max(waits)))
+        ydata, xdata, _ = ax.hist(waits, bins=bins,
+                        color=color, alpha=1, zorder=1, 
+                        density=True, # weights=np.ones_like(waits) / len(waits),
+                        histtype="step", lw=lw, cumulative=-1, label=label)
 
-            _color = 'k' if time_bin == 0 and avg_bin == 1 else color
-            plot_polygon(np.log10(x[avg_bin]), avg, np.log10(y[avg_bin]), axs[time_bin], color=_color)
+        if plot_fit:
+            x = np.linspace(0.001, 500, 10000)
+            ax.plot(x, 1-Wald_cdf(x, *p), color=color, lw=2, zorder=4, ls='--', label=f'{label} fit')
+        return ax
 
-            if plot_fit:
-                (alpha, theta, gamma, alpha_prime, thetaprime, gamma_prime, alpha_second, thetasecond, gamma_second), loss = modelwald_fit(data[animal])
-                _x = np.linspace(0, 300, 1000)
-                _y = np.ones_like(_x)*avg
-                _z = 1-Wald_cdf(_x, alpha + time_bin*alpha_prime + avg_bin*alpha_second, 0, gamma + time_bin*gamma_prime + avg_bin*gamma_second)
-                # (_alpha, _theta, _gamma), lossWald = wald_fit(exampledata[animal][time_bin][avg_bin])
-                # _z = 1-Wald_cdf(_x, _alpha, _theta, _gamma)
-                _x = np.log10(_x)
-                _z = np.log10(_z)
+    fig, axs = plt.subplots(1, N_bins, figsize=(3*N_bins, 3))
+    (alpha, theta, gamma, alpha_t, thetaprime, gamma_t, alpha_R, thetasecond, gamma_R), loss = modelwald_fit(data[animal])
 
-                _x[_z < -3] = np.nan
-                _y[_z < -3] = np.nan
-                _z[_z < -3] = -3
-                axs[time_bin].plot(_x, _y, _z, color=color, alpha=1, linewidth=2, ls='--')
-
-        axs[time_bin].set(xlim=(-1, 3), ylim=(1.2, -.1), zlim=(-3, 0.1))
-        axs[time_bin].set_xticks([-1, 0, 1, 2, 3])
-        axs[time_bin].set_xticklabels(['-1', '0', '1', '2', '3'])
-        axs[time_bin].set_yticks([1, .67, .33, 0])
-        axs[time_bin].set_yticklabels(['1', '0.67', '0.33', '0'])
-        axs[time_bin].set_zticks([0, -1, -2, -3])
-        axs[time_bin].set_zticklabels(['0', '-1', '-2', '-3'])
-        _t = r'$t$'
-        axs[time_bin].set_title(f'time bin {_t} = {time_bin*10}-{(time_bin+1)*10} min')
-        axs[time_bin].view_init(25, 300)
-        axs[time_bin].zaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
-        axs[time_bin].xaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
-    axs[0].set(xlabel='log idle time duration', ylabel=r'Reward history $R$', zlabel='log 1-CDF')
+    lbls = ['1', '0.67', '0.33', '0']
+    for j in range(N_bins):
+        for i in range(N_avg):
+            color = plt.get_cmap('inferno')(i / N_avg)
+            lw = 3.5 if j == 0 and i == 1 else 2
+            _plot_wald_fitted(data[animal][j][i], 
+                            (alpha + j*alpha_t + i*alpha_R, theta, gamma + j*gamma_t + i*gamma_R), 
+                            ax=axs[j], color=color, plot_fit=plot_fit, label=lbls[i], lw=lw)
+        axs[j].set_xlim(.1, 1000)
+        axs[j].set_ylim(.001, 1.1)
+        axs[j].set_xscale("log")
+        axs[j].set_yscale("log")
+        axs[j].set_xlabel('log(idle time) (s)')
+        axs[j].set_ylabel('log(1-CDF)')
+        axs[j].set_title(f'{j*10}-{(j+1)*10} min')
+        axs[j].legend()
 
 ######################################################
 
@@ -4092,7 +4119,7 @@ def plot_color_line(ax, x, y, z, cmap = 'viridis', vmin = None, vmax = None, alp
 # alpha, alpha', alpha'', gamma, gamma', gamma''
 def model_crit(params, *args, robustness_param=1e-20):
     """negative log likelihood function for full model"""
-    alpha, theta, gamma, alpha_prime, theta_prime, gamma_prime, alpha_second, theta_second, gamma_second = params
+    alpha, theta, gamma, alpha_t, theta_prime, gamma_t, alpha_R, theta_second, gamma_R = params
     neg_log_lik_val = 0
     N_bins, N_avg = args[1]
     ALPHA = np.zeros((N_bins, N_avg))
@@ -4101,8 +4128,8 @@ def model_crit(params, *args, robustness_param=1e-20):
 
     for bin in range(N_bins):
         for avg in range(N_avg):
-            ALPHA[bin, avg] = alpha + bin*alpha_prime + avg*alpha_second
-            GAMMA[bin, avg] = gamma + bin*gamma_prime + avg*gamma_second
+            ALPHA[bin, avg] = alpha + bin*alpha_t + avg*alpha_R
+            GAMMA[bin, avg] = gamma + bin*gamma_t + avg*gamma_R
 
     for bin in range(N_bins):
         for avg in range(N_avg):
@@ -4122,17 +4149,18 @@ def model_crit(params, *args, robustness_param=1e-20):
 # alpha, alpha', alpha'', gamma, gamma', gamma''
 def model_compare(params, *args, robustness_param=1e-20):
     """BIC to compare models with different number of parameters and curves"""
-    alpha, theta, gamma, alpha_prime, theta_prime, gamma_prime, alpha_second, theta_second, gamma_second = params
+    alpha, theta, gamma, alpha_t, theta_prime, gamma_t, alpha_R, theta_second, gamma_R = params
     BIC = 0
     N_bins, N_avg = args[1]
+    N_params = args[2]
     ALPHA = np.zeros((N_bins, N_avg))
     GAMMA = np.zeros((N_bins, N_avg))
     _theta = theta + theta_prime + theta_second
 
     for bin in range(N_bins):
         for avg in range(N_avg):
-            ALPHA[bin, avg] = alpha + bin*alpha_prime + avg*alpha_second
-            GAMMA[bin, avg] = gamma + bin*gamma_prime + avg*gamma_second
+            ALPHA[bin, avg] = alpha + bin*alpha_t + avg*alpha_R
+            GAMMA[bin, avg] = gamma + bin*gamma_t + avg*gamma_R
 
     for bin in range(N_bins):
         for avg in range(N_avg):
@@ -4144,65 +4172,46 @@ def model_compare(params, *args, robustness_param=1e-20):
                 log_lik_val = ln_pdf_vals.sum()
 
                 n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
-                k = 2  # alpha, gamma
+                k = N_params
                 BIC += k * np.log(n) - 2 * log_lik_val
             except:
                 BIC += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
     return BIC
 
 #params = a, t, g, a', t', g', a'', t'', g''
-def modelwald_fit(data, init=[2, 0, .5, 0, 0, 0, 0, 0, 0], f=model_crit, N_bins=6, N_avg=4, alpha_prime_fixed=False, gamma_prime_fixed=False, alpha_second_fixed=False, gamma_second_fixed=False):
+def modelwald_fit(data, init=[2, 0, .5, 0, 0, 0, 0, 0, 0], 
+        f=model_crit, N_bins=6, N_avg=4, N_params=2,
+        alpha_t_fixed=False, gamma_t_fixed=False, 
+        alpha_R_fixed=False, gamma_R_fixed=False,
+        ):
     """fit full model to data"""
     params_init = np.array(init)
-    alpha_prime_bounds = (None, None) if not alpha_prime_fixed else (0, 1e-8)
-    gamma_prime_bounds = (None, None) if not gamma_prime_fixed else (0, 1e-8)
-    alpha_second_bounds = (None, None) if not alpha_second_fixed else (0, 1e-8)
-    gamma_second_bounds = (None, None) if not gamma_second_fixed else (0, 1e-8)
+    alpha_t_bounds = (None, None) if not alpha_t_fixed else (0, 1e-8)
+    gamma_t_bounds = (None, None) if not gamma_t_fixed else (0, 1e-8)
+    alpha_R_bounds = (None, None) if not alpha_R_fixed else (0, 1e-8)
+    gamma_R_bounds = (None, None) if not gamma_R_fixed else (0, 1e-8)
 
-    res = scipy.optimize.minimize(f, params_init, args=(data, [N_bins, N_avg]), 
+    res = scipy.optimize.minimize(f, params_init, args=(data, [N_bins, N_avg], N_params), 
                                         bounds=((0, None), (0, 1e-8), (0, None), 
-                                            alpha_prime_bounds, (0, 1e-8), gamma_prime_bounds, 
-                                            alpha_second_bounds, (0, 1e-8), gamma_second_bounds))
+                                            alpha_t_bounds, (0, 1e-8), gamma_t_bounds, 
+                                            alpha_R_bounds, (0, 1e-8), gamma_R_bounds))
     return res.x, res.fun
 
 
 
-def plot_wald_fitted(waits, p, ax=None, color='k'):
-    """plot fitted wald distribution without fitting"""
-    if ax is None: ax = plt.gca()
-    waits = np.asarray(waits)
-
-    bins=np.linspace(0, waits.max(), int(max(waits)))
-    ydata, xdata, _ = ax.hist(waits, bins=bins,
-                    color=color, alpha=.5, zorder=1, 
-                    density=True, # weights=np.ones_like(waits) / len(waits),
-                    histtype="step", lw=2, cumulative=-1,)
-
-    x = np.linspace(0.001, 500, 10000)
-    (alpha, theta, gamma) = p
-    ax.plot(x, 1-Wald_cdf(x, alpha, theta, gamma), color=color, lw=1, zorder=4, label=f'mean={gamma:.2f}, A={alpha:.2f}, t0={theta:.2f}')
-
-    ax.set_xlim(.1, 1000)
-    ax.set_ylim(.01, 1.1)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel('log Wait time')
-    ax.set_ylabel('log 1-CDF')
-
-    return ax
 
 ################################################
 
 def plot_parameter_evolution(p, axs=None, N_bins=6, N_avg=4):
 
-    (alpha, gamma, alpha_prime, gamma_prime, alpha_second, gamma_second) = p
+    (alpha, gamma, alpha_t, gamma_t, alpha_R, gamma_R) = p
     ALPHA = np.zeros((N_bins, N_avg))
     GAMMA = np.zeros((N_bins, N_avg))
 
     for bin in range(N_bins):
         for avg in range(N_avg):
-            ALPHA[bin, avg] = alpha + bin*alpha_prime + avg*alpha_second
-            GAMMA[bin, avg] = gamma + bin*gamma_prime + avg*gamma_second
+            ALPHA[bin, avg] = alpha + bin*alpha_t + avg*alpha_R
+            GAMMA[bin, avg] = gamma + bin*gamma_t + avg*gamma_R
 
     if axs is None:
         fig, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
