@@ -1,5 +1,8 @@
 import copy
-import dabest
+try:
+    import dabest
+except:
+    print("dabest not installed")
 import datetime
 import fnmatch
 import glob
