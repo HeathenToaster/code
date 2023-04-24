@@ -822,7 +822,7 @@ def modelwald_fit(data, init=[2, 0, .5, 0, 0, 0, 0, 0, 0],
 ################################################
 
 
-def plot_parameter_evolution(p, axs=None, N_bins=6, N_avg=4):
+def plot_parameter_evolutionIdleTime(p, axs=None, N_bins=6, N_avg=4):
 
     (alpha, gamma, alpha_t, gamma_t, alpha_R, gamma_R) = p
     ALPHA = np.zeros((N_bins, N_avg))
