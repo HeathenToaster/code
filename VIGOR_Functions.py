@@ -349,7 +349,7 @@ def matchsession(animal, sessionlist, AMPM=False):
 
 
 # select a random session for specified animal
-def randomsession(animal):
+def randomsession(animal, sessionlist):
     list = [session for session in sessionlist if animal == session[0:6]]
     return(list)
 
