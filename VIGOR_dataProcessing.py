@@ -1,6 +1,7 @@
 # util functions for the project
 import os
 import re
+import sys
 import pandas as pd
 import numpy as np
 import copy
@@ -14,96 +15,12 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter as smooth
 
 from VIGOR_plotting import *
+from VIGOR_utils import *
 import sessionlists
 
 plt.style.use('./Figures/test.mplstyle')
 PALETTE = {'RatF00': (0.55, 0.0, 0.0), 'RatF01': (0.8, 0.36, 0.36), 'RatF02': (1.0, 0.27, 0.0), 'RatF03': (.5, .5, .5),
            'RatM00': (0.0, 0.39, 0.0), 'RatM01': (0.13, 0.55, 0.13), 'RatM02': (0.2, 0.8, 0.2), 'RatM03': (.5, .5, .5)}
-
-
-# function to read the parameters for each rat for the session in the
-# behav.param file. Specify the name of the parameter that you want
-# to get from the file and optionally the value type that you want.
-# File path is not an option, maybe change that. Dataindex is in case
-# you don't only want the last value in line, so you can choose which
-# value you want using its index --maybe add the
-# option to choose a range of values.
-def read_params(root, animal, session, paramName, dataindex=-1, valueType=str):
-    # define path of the file
-    behav = root + os.sep+animal + os.sep+"Experiments" + \
-            os.sep + session + os.sep + session + ".behav_param"
-    # check if it exists
-    if not os.path.exists(behav):
-        print("No file %s" % behav)
-    # check if it is not empty
-    # if os.stat(behav).st_size == 0:
-        # print("File empty %s" % behav)
-    with open(behav, "r") as f:
-        # scan the file for a specific parameter, if the name of
-        # the parameter is there, get the value
-        for line in f:
-            if valueType is str:
-                if paramName in line:
-                    # get the last value of the line [-1], values are
-                    # separated with _blanks_ with the .split() function
-                    return int(line.split()[dataindex])
-            if valueType is float:
-                if paramName in line:
-                    return float(line.split()[dataindex])
-            else:
-                if paramName in line:
-                    return str(line.split()[dataindex])
-
-
-# function to open and read from the .position files using pandas, specify
-# the path of the file to open, the column that you want
-# to extract from, and the extension of the file
-def read_csv_pandas(path, Col=None, header=None):
-    #  verify that the file exists
-    if not os.path.exists(path):
-        print("No file %s" % path)
-        return []
-    try:  # open the file
-        csvData = pd.read_csv(path, header=header,
-                              delim_whitespace=True, low_memory=False)
-    except ValueError:
-        print("%s not valid (usually empty)" % path)
-        return []
-        # verify that the column that we specified is not empty,
-        # and return the values
-    if Col is not None:
-        return csvData.values[:, Col[0]]
-    else:
-        return csvData
-
-
-# new px to cm conversion. To correct camera lens distorsion (pixels in the
-# center of the treadmill are more precise than the ones located at the
-# extremities), filter applied in LabView, and conversion should be uniform
-# now, 11 px is equal to 1 cm at every point of the treadmill.
-def datapx2cm(list):
-    array = []
-    for pos in list:
-        if pos == 0:
-            array.append(pos)
-        elif pos > 0 and pos < 1300:
-            array.append(pos/11)
-        else:
-            array.append(pos)
-            print("might have error in position", pos)
-    return array
-
-
-# function to compute speed array based on position and time arrays
-def compute_speed(dataPos, dataTime):  # speed only computed along X axis. Compute along X AND Y axis?
-    rawdata_speed = {}
-    deltaXPos = (np.diff(dataPos))
-    deltaTime = (np.diff(dataTime))
-    rawdata_speed = np.divide(deltaXPos, deltaTime)
-    rawdata_speed = np.append(rawdata_speed, 0)
-    return rawdata_speed.astype('float32')
-    # working on ragged arrays so type of the array may
-    # have to be modified from object to float32
 
 
 # replace first 0s in animal position (animal not found when cam init)
@@ -150,34 +67,6 @@ def fixcamglitch(time, pos, edit):
     return fixed.flatten()
 
 
-# function to compute moving average, used to see the eventual acquisition bugs
-def movinavg(interval, window_size):
-    if window_size != 0:
-        window = np.ones(int(window_size))/float(window_size)
-    else:
-        print("Error: Window size == 0")
-    return np.convolve(interval, window, 'same')
-
-
-# same with median, used to compute moving threshold for lick detection
-def movinmedian(interval, window_size):
-    if window_size != 0:
-        window = int(window_size)
-    else:
-        print("Error: Window size == 0")
-    val = pd.Series(interval)
-    return val.rolling(window).median()
-
-
-def reversemovinmedian(interval, window_size):
-    if window_size != 0:
-        window = int(window_size)
-    else:
-        print("Error: Window size == 0")
-    val = pd.Series(interval[::-1])
-    return list(reversed(val.rolling(window).median()))
-
-
 # group bin data by reward%
 def poolByReward(data, proba, blocks, rewardproba):
     output = []
@@ -220,34 +109,6 @@ def extract_boundaries(data, dist, height=None):
     rightBoundaryPeak = peak_posRight[np.argmax(peak_heightRight)]
     # print("computing bounds", animal, leftBoundaryPeak, rightBoundaryPeak)
     return leftBoundaryPeak, rightBoundaryPeak, kde
-
-
-# save data as pickle
-def save_as_pickle(root, data, animal, session, name):
-    sessionPath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session
-    folderPath = os.path.join(sessionPath, "Analysis")
-    if not os.path.exists(folderPath):
-        os.mkdir(folderPath)
-    filePath = os.path.join(folderPath, name)
-    pickle.dump(data, open(filePath, "wb"))
-
-
-# load data that has been pickled
-def get_from_pickle(root, animal, session, name):
-    sessionPath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session
-    analysisPath = os.path.join(sessionPath, "Analysis")
-    picklePath = os.path.join(analysisPath, name)
-    # if not re.do, and there is a pickle, try to read it
-    if os.path.exists(picklePath):
-        try:
-            data = pickle.load(open(picklePath, "rb"))
-            return data
-        except Exception:
-            print("error loading pickle")
-            pass
-    else:
-        print("no pickle found")
-        return None
 
 
 # convert scale, convert i = 0 to 120 --> 60 to-60 which correspnds to the speed to the right (0 to 60) and to the left (0 to -60)
@@ -573,36 +434,6 @@ def recut(data_to_cut, data_template):
         output.append(data_to_cut[start_of_bin: end_of_bin])
         start_of_bin = end_of_bin
     return output
-
-
-# in action sequence, get block number based on beginning of action
-def get_block(t_0):
-    block = None
-    if 0 <= t_0 <= 300:
-        block = 0
-    elif 300 < t_0 <= 600:
-        block = 1
-    elif 600 < t_0 <= 900:
-        block = 2
-    elif 900 < t_0 <= 1200:
-        block = 3
-    elif 1200 < t_0 <= 1500:
-        block = 4
-    elif 1500 < t_0 <= 1800:
-        block = 5
-    elif 1800 < t_0 <= 2100:
-        block = 6
-    elif 2100 < t_0 <= 2400:
-        block = 7
-    elif 2400 < t_0 <= 2700:
-        block = 8
-    elif 2700 < t_0 <= 3000:
-        block = 9
-    elif 3000 < t_0 <= 3300:
-        block = 10
-    elif 3300 < t_0 <= 3600:
-        block = 11
-    return block
 
 
 # much faster, mask is ok but then bug
@@ -1403,6 +1234,40 @@ class ProcessData():
                                 f'recapFIG{self.session}.png', dpi='figure',
                                 transparent=False, background='w')
         plt.close('all')
+
+
+# util funct to print a progress bar
+def update_progress(progress, root):
+    barLength = 50
+    animalList = [os.path.basename(path) for path in sorted(glob.glob(root+"/Rat*"))]
+
+    def status_update(progress):
+        status = ""
+        if isinstance(progress, int):
+            progress = float(progress)
+        if not isinstance(progress, float):
+            progress = 0
+            status = "Error: progress var must be float\r\n"
+        if progress < 0:
+            progress = 0
+            status = "Something's WRONG...\r\n"
+        if progress < 1 and progress >= 0:
+            status = "Computing..."
+        if progress >= 0.999:
+            progress = 1
+            status = 'Done ✓ \r'
+        return status
+
+    text = ("\r")
+    for i, animal in enumerate(animalList):
+        text += animalList[i] + "{0}".format(" " * int(round(barLength * progress[i])) +
+        "          __QQ" + " " * (barLength - int(round(barLength * progress[i])))) + " " * 180 + \
+        "Progress: [{0}] {1}% {2}".format(" " * int(round(barLength * progress[i])) + " ~~~(_)_\">" +
+        " " * (barLength-int(round(barLength * progress[i]))),
+        int(round(progress[i] * 100)), status_update(progress[i])) + "\n\n"
+
+    sys.stdout.write(text)
+    sys.stdout.flush()
 
 # if __name__ == "__main__":
 #     # Define data path.

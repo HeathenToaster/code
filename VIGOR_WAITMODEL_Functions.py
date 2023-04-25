@@ -896,11 +896,11 @@ def test_all_conds_between_themselves(conds, vars, ax=None):
                     c += 0.1
 
 
-def dict_to_xticklabels(d):
+def dict_to_xticklabels(d, labels=['αt', 'αR', 'γt', 'γR']):
     """convert dict keys to xticklabels for ablation plots"""
     allkeys = list(d.keys())
     conv = lambda x: "-" if x else "+"
-    result = [r"$\alpha'$"+"\n"+r"$\gamma'$"+"\n"+r"$\alpha''$"+"\n"+r"$\gamma''$"]
+    result = ["\n".join(labels)]
     for i in allkeys:
         result.append(f'{chr(10).join([conv(j) for j in i])}')
     return result
