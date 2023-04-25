@@ -275,3 +275,28 @@ def brainstatus_plot(status):
         return 'solid'
     else:
         return 'solid'
+
+############################################
+# copy only test.p files for all sessions
+# compress and upload to google drive
+# add animal, session = 'RatM01', 'RatM01_2021_07_22_17_14_48'  to the list
+# import fnmatch
+# from os.path import isdir, join
+# from shutil import copytree, rmtree
+
+# def include_patterns(*patterns):
+#     def _ignore_patterns(path, all_names):
+#         # Determine names which match one or more patterns (that shouldn't be
+#         # ignored).
+#         keep = (name for pattern in patterns for name in fnmatch.filter(all_names, pattern))
+#         # Ignore file names which *didn't* match any of the patterns given that
+#         # aren't directory names.
+#         dir_names = (name for name in all_names if isdir(join(path, name)))
+#         return set(all_names) - set(keep) - set(dir_names)
+#     return _ignore_patterns
+
+
+# src = "/home/david/Desktop/DATA"
+# dst = "/home/david/Desktop/testcopy"
+# copytree(src, dst, ignore=include_patterns('test.p'))
+############################################
