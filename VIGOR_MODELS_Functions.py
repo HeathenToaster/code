@@ -393,17 +393,18 @@ def combine_dict(d1, d2):
     return dict(zip(keys, values))
 
 
-# def log_tick_formatter(val, pos=None):
-#     '''Return the string representation of 10^val'''
-#     return r'$10^{%s}$' % val
+def log_tick_formatter(val):
+    '''Return the string representation of 10^val'''
+    return r'$10^{%s}$' % val
 
-# def plot_polygon(x, y, z, ax, color='k', limitZ=-3, limitX=-1):
-#     '''plot the distribution of the data as a polygon'''
-#     z[-1] = limitZ  # force last point to be at 10^-3 instead of -inf
-#     x[0] = limitX  # force first point to be at 10^-1 instead of 0
-#     for i in range(len(x)-1):
-#         ax.plot([x[i], x[i+1]], [y, y], [z[i], z[i]], color=color)
-#         ax.plot([x[i+1], x[i+1]], [y, y], [z[i], z[i+1]], color=color)
+
+def plot_polygon(x, y, z, ax, color='k', limitZ=-3, limitX=-1):
+    '''plot the distribution of the data as a line instead of a histogram'''
+    z[-1] = limitZ  # force last point to be at 10^-3 instead of -inf
+    x[0] = limitX  # force first point to be at 10^-1 instead of 0
+    for i in range(len(x)-1):
+        ax.plot([x[i], x[i+1]], [y, y], [z[i], z[i]], color=color)
+        ax.plot([x[i+1], x[i+1]], [y, y], [z[i], z[i+1]], color=color)
 
 
 def plot_full_distribution(data, animal, plot_fit=False, N_bins=6, N_avg=4):
@@ -1142,4 +1143,3 @@ def plot_parameter_evolutionRun(p, axs=None, N_bins=6, N_avg=4):
     axs[1].text(0, 5, 0, r"$\sigma R$: Effect of reward on $\Sigma$", color='black', fontsize=12, zdir=(4, 0, -.5), zorder=10)
     axs[1].text(0, -1, .6, r"$\sigma t$: Effect of time on $\Sigma$", color='black', fontsize=12, zdir=(0, -10, .1), zorder=10)
     axs[1].text(0, 0, 0.4, r"$\sigma_0$: Baseline $\Sigma$", color='black', fontsize=12, zdir='x', zorder=10)
-
