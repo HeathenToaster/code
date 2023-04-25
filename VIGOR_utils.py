@@ -47,7 +47,7 @@ def matchsession(animal, sessionlist, AMPM=False):
 # select a random session for specified animal
 def randomsession(animal, sessionlist):
     list = [session for session in sessionlist if animal == session[0:6]]
-    return(list)
+    return (list)
 
 
 # function to compute moving average, used to see the eventual acquisition bugs
@@ -261,3 +261,17 @@ def get_block(t_0):
     elif 3300 < t_0 <= 3600:
         block = 11
     return block
+
+
+# different linestyle depending on brain condition of the animal
+def brainstatus_plot(status):
+    if status == "lesion":
+        return 'dotted'
+    elif status == "CNO":
+        return 'dotted'
+    elif status == "saline":
+        return 'solid'
+    elif status == "normal":
+        return 'solid'
+    else:
+        return 'solid'

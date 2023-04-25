@@ -16,7 +16,6 @@ from scipy.ndimage import gaussian_filter as smooth
 
 from VIGOR_plotting import *
 from VIGOR_utils import *
-import sessionlists
 
 plt.style.use('./Figures/test.mplstyle')
 PALETTE = {'RatF00': (0.55, 0.0, 0.0), 'RatF01': (0.8, 0.36, 0.36), 'RatF02': (1.0, 0.27, 0.0), 'RatF03': (.5, .5, .5),
