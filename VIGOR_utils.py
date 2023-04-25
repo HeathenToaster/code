@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import pandas as pd
+import copy
+from itertools import chain
 
 
 # conversion
@@ -261,6 +263,14 @@ def get_block(t_0):
     elif 3300 < t_0 <= 3600:
         block = 11
     return block
+
+
+# function to stitch together all the bins of a variable to form the full session variable.
+def stitch(input):
+    dataSession = copy.deepcopy(input)
+    for i, data in enumerate(input):
+        dataSession[i] = list(chain.from_iterable(list(data.values())))
+    return dataSession
 
 
 # different linestyle depending on brain condition of the animal
