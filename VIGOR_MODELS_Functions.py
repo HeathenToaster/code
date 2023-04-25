@@ -833,7 +833,7 @@ def plot_parameter_evolutionIdleTime(p, axs=None, N_bins=6, N_avg=4):
             GAMMA[bin, avg] = gamma + bin*gamma_t + avg*gamma_R
 
     if axs is None:
-        fig, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
+        _, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
 
     X, Y = np.meshgrid(np.arange(N_avg), np.arange(N_bins))
     axs[0].plot_surface(X, Y, ALPHA, cmap='winter', edgecolor='none')
@@ -937,15 +937,16 @@ def simple_progress_bar(current, total, animal, cond, bar_length=20):
 #############################################################
 # Running time model functions
 
+
 def get_running_times(data, memsize=3, filter=[0, 3600], tooshort=0.1):
     """get waiting times from data"""
-    running_times = {k:[] for k in meankeys(generate_targetList(seq_len=memsize)[::-1])}
+    running_times = {k: [] for k in meankeys(generate_targetList(seq_len=memsize)[::-1])}
     for i in range(len(data)):
         if data[i][1] == 'run':
             if filter[0] <= data[i][0] <= filter[1] and data[i][3] != 0:
                 if data[i][3] > tooshort:  # filter out runs shorter than 0.5s
                     try:
-                        avg_rwd = round(np.mean([data[i-n-1][2] for n in range(1, (memsize*2)+1, 2)]),2)
+                        avg_rwd = round(np.mean([data[i-n-1][2] for n in range(1, (memsize*2)+1, 2)]), 2)
                         running_times[avg_rwd].append(data[i][3])
                     except:  # put the first n runs in rwd=1 (because we don't have the previous n runs to compute the average reward)
                         running_times[1].append(data[i][3])
@@ -960,10 +961,9 @@ def prepare_data_running_times(sequence, animalList, sessionList, memsize=3, tim
     for bin in range(time_bins):
         temp_data[bin] = {}
         for animal in animalList:
-            temp_data[bin][animal] = {k:[] for k in meankeys(targetlist)}
+            temp_data[bin][animal] = {k: [] for k in meankeys(targetlist)}
             for session in matchsession(animal, sessionList):
                 temp_data[bin][animal] = combine_dict(temp_data[bin][animal], get_running_times(sequence[animal, session], memsize=memsize, filter=[bin*bin_size, (bin+1)*bin_size]))
-    
     data = {}
     for animal in animalList:
         data[animal] = np.zeros((time_bins, len(meankeys(targetlist)))).tolist()
@@ -997,8 +997,7 @@ def plot_full_distribution_run(data, animal, plot_fit=False, N_bins=6, N_avg=4):
             ax.plot(x, stats.cauchy.sf(x, loc=loc, scale=scale), color=color, lw=2, zorder=4, ls='--', label=f'{label} fit')
         return ax
 
-
-    fig, axs = plt.subplots(1, N_bins, figsize=(3*N_bins, 3))
+    _, axs = plt.subplots(1, N_bins, figsize=(3*N_bins, 3))
     (mu, sigma, mu_t, sigma_t, mu_R, sigma_R), loss = modelrun_fit(data[animal])
 
     lbls = ['1', '0.67', '0.33', '0']
@@ -1007,9 +1006,9 @@ def plot_full_distribution_run(data, animal, plot_fit=False, N_bins=6, N_avg=4):
             color = plt.get_cmap('inferno')(i / N_avg)
             lw = 3.5 if j == 0 and i == 1 else 2
             _plot_Cauchy_fitted(data[animal][j][i],
-                              (mu + j*mu_t + i*mu_R,
-                               sigma + j*sigma_t + i*sigma_R), 
-                              ax=axs[j], color=color, plot_fit=plot_fit, label=lbls[i], lw=lw)
+                                (mu + j*mu_t + i*mu_R,
+                                 sigma + j*sigma_t + i*sigma_R),
+                                ax=axs[j], color=color, plot_fit=plot_fit, label=lbls[i], lw=lw)
         axs[j].set_xlim(.1, 100)
         axs[j].set_ylim(.001, 1.1)
         axs[j].set_xscale("log")
@@ -1079,17 +1078,19 @@ def modelrun_compare(params, *args, robustness_param=1e-20):
     return BIC
 
 
-def modelrun_fit(data, init=[1, 1, 1, 1, 1, 1], f=modelrun_crit, 
-N_bins=6, N_avg=4, N_params=2, mu_t_fixed=False, sigma_t_fixed=False, mu_R_fixed=False, sigma_R_fixed=False, ):
+def modelrun_fit(data, init=[1, 1, 1, 1, 1, 1], f=modelrun_crit,
+                 N_bins=6, N_avg=4, N_params=2,
+                 mu_t_fixed=False, sigma_t_fixed=False,
+                 mu_R_fixed=False, sigma_R_fixed=False):
     params_init = np.array(init)
     mu_t_bounds = (None, None) if not mu_t_fixed else (0, 1e-8)
     sigma_t_bounds = (None, None) if not sigma_t_fixed else (0, 1e-8)
     mu_R_bounds = (None, None) if not mu_R_fixed else (0, 1e-8)
     sigma_R_bounds = (None, None) if not sigma_R_fixed else (0, 1e-8)
 
-    res = minimize(f, params_init, args=(data, [N_bins, N_avg], N_params), 
-                   bounds=((0, None), (0, None), 
-                           mu_t_bounds, sigma_t_bounds, 
+    res = minimize(f, params_init, args=(data, [N_bins, N_avg], N_params),
+                   bounds=((0, None), (0, None),
+                           mu_t_bounds, sigma_t_bounds,
                            mu_R_bounds, sigma_R_bounds))
     return res.x, res.fun
 
@@ -1105,7 +1106,7 @@ def plot_parameter_evolutionRun(p, axs=None, N_bins=6, N_avg=4):
             SIGMA[bin, avg] = sigma + bin*sigma_t + avg*sigma_R
 
     if axs is None:
-        fig, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
+        _, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
 
     X, Y = np.meshgrid(np.arange(N_avg), np.arange(N_bins))
     axs[0].plot_surface(X, Y, MU, cmap='winter', edgecolor='none')
