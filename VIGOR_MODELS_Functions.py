@@ -9,14 +9,13 @@ from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize
 
-from VIGOR_dataProcessing import *
+from VIGOR_utils import *
 
 #######################################################################
-# WAITING TIME MODEL
 
 
 # separate the data into time and reward bins
-def prepare_data(sequence, animalList, sessionList, memsize=3, time_bins=6):
+def prepare_data_idle_times(sequence, animalList, sessionList, memsize=3, time_bins=6):
     """prepare data for fitting
     cut the data into time bins and reward bins"""
     bin_size = 3600/time_bins
@@ -934,3 +933,212 @@ def simple_progress_bar(current, total, animal, cond, bar_length=20):
     padding = int(bar_length - len(arrow)) * ' '
     ending = '\n' if current >= .99*total else '\r'
     print(f'{animal} {cond} Progress: [{arrow}{padding}] {int(fraction*100)}%  ', end=ending)
+
+#############################################################
+# Running time model functions
+
+def get_running_times(data, memsize=3, filter=[0, 3600], tooshort=0.1):
+    """get waiting times from data"""
+    running_times = {k:[] for k in meankeys(generate_targetList(seq_len=memsize)[::-1])}
+    for i in range(len(data)):
+        if data[i][1] == 'run':
+            if filter[0] <= data[i][0] <= filter[1] and data[i][3] != 0:
+                if data[i][3] > tooshort:  # filter out runs shorter than 0.5s
+                    try:
+                        avg_rwd = round(np.mean([data[i-n-1][2] for n in range(1, (memsize*2)+1, 2)]),2)
+                        running_times[avg_rwd].append(data[i][3])
+                    except:  # put the first n runs in rwd=1 (because we don't have the previous n runs to compute the average reward)
+                        running_times[1].append(data[i][3])
+    return running_times
+
+
+# separate the data into time and reward bins
+def prepare_data_running_times(sequence, animalList, sessionList, memsize=3, time_bins=6):
+    bin_size = 3600/time_bins
+    targetlist = generate_targetList(memsize)[::-1]
+    temp_data = {}
+    for bin in range(time_bins):
+        temp_data[bin] = {}
+        for animal in animalList:
+            temp_data[bin][animal] = {k:[] for k in meankeys(targetlist)}
+            for session in matchsession(animal, sessionList):
+                temp_data[bin][animal] = combine_dict(temp_data[bin][animal], get_running_times(sequence[animal, session], memsize=memsize, filter=[bin*bin_size, (bin+1)*bin_size]))
+    
+    data = {}
+    for animal in animalList:
+        data[animal] = np.zeros((time_bins, len(meankeys(targetlist)))).tolist()
+        for i, avg in enumerate(meankeys(targetlist)):  # 1 -> 0
+            for bin in range(time_bins):
+                data[animal][bin][i] = np.asarray(temp_data[bin][animal][avg])
+    return data
+
+
+def plot_full_distribution_run(data, animal, plot_fit=False, N_bins=6, N_avg=4):
+    '''plot the full distribution of the data'''
+    ###
+    # NOT SAME NUMBER OF OBSERVATIONS IN EACH CURVE, BUT SAME NORMALIZATION ???
+    ###
+
+    def _plot_Cauchy_fitted(waits, p, ax=None, color='k', plot_fit=True, label='', lw=2):
+        """plot fitted cauchy distribution without fitting"""
+        if ax is None:
+            ax = plt.gca()
+        waits = np.asarray(waits)
+
+        bins = np.linspace(0, waits.max(), int(max(waits))*25)
+        ydata, xdata, _ = ax.hist(waits, bins=bins,
+                                  color=color, alpha=1, zorder=1,
+                                  density=True,  # weights=np.ones_like(waits) / len(waits),
+                                  histtype="step", lw=lw, cumulative=-1, label=label)
+
+        if plot_fit:
+            x = np.linspace(0.001, 500, 10000)
+            loc, scale = p
+            ax.plot(x, stats.cauchy.sf(x, loc=loc, scale=scale), color=color, lw=2, zorder=4, ls='--', label=f'{label} fit')
+        return ax
+
+
+    fig, axs = plt.subplots(1, N_bins, figsize=(3*N_bins, 3))
+    (mu, sigma, mu_t, sigma_t, mu_R, sigma_R), loss = modelrun_fit(data[animal])
+
+    lbls = ['1', '0.67', '0.33', '0']
+    for j in range(N_bins):
+        for i in range(N_avg):
+            color = plt.get_cmap('inferno')(i / N_avg)
+            lw = 3.5 if j == 0 and i == 1 else 2
+            _plot_Cauchy_fitted(data[animal][j][i],
+                              (mu + j*mu_t + i*mu_R,
+                               sigma + j*sigma_t + i*sigma_R), 
+                              ax=axs[j], color=color, plot_fit=plot_fit, label=lbls[i], lw=lw)
+        axs[j].set_xlim(.1, 100)
+        axs[j].set_ylim(.001, 1.1)
+        axs[j].set_xscale("log")
+        axs[j].set_yscale("log")
+        axs[j].set_xlabel('log(idle time) (s)')
+        axs[j].set_ylabel('log(1-CDF)')
+        axs[j].set_title(f'{j*10}-{(j+1)*10} min')
+        axs[j].legend()
+
+
+def modelrun_crit(params, *args, robustness_param=1e-20):
+    mu, sigma, mu_prime, sigma_prime, mu_second, sigma_second = params
+    neg_log_lik_val = 0
+    N_bins, N_avg = args[1]
+    MU = np.zeros((N_bins, N_avg))
+    SIGMA = np.zeros((N_bins, N_avg))
+
+    for bin in range(N_bins):
+        for avg in range(N_avg):
+            MU[bin, avg] = mu + bin*mu_prime + avg*mu_second
+            SIGMA[bin, avg] = sigma + bin*sigma_prime + avg*sigma_second
+
+    for bin in range(N_bins):
+        for avg in range(N_avg):
+            _mu = MU[bin, avg] if MU[bin, avg] > 0 else 1e-8
+            _sigma = SIGMA[bin, avg] if SIGMA[bin, avg] > 0 else 1e-8
+
+            pdf_vals = stats.cauchy.pdf(args[0][bin][avg], scale=_sigma, loc=_mu,)
+            ln_pdf_vals = np.log(pdf_vals + robustness_param)
+            log_lik_val = ln_pdf_vals.sum()
+
+            n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
+            neg_log_lik_val += (-log_lik_val / n)
+            # except:
+            #     neg_log_lik_val += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
+    return neg_log_lik_val
+
+
+def modelrun_compare(params, *args, robustness_param=1e-20):
+    """BIC to compare models with different number of parameters and curves"""
+    mu, sigma, mu_t, sigma_t, mu_R, sigma_R = params
+    BIC = 0
+    N_bins, N_avg = args[1]
+    N_params = args[2]
+    MU = np.zeros((N_bins, N_avg))
+    SIGMA = np.zeros((N_bins, N_avg))
+
+    for bin in range(N_bins):
+        for avg in range(N_avg):
+            MU[bin, avg] = mu + bin*mu_t + avg*mu_R
+            SIGMA[bin, avg] = sigma + bin*sigma_t + avg*sigma_R
+
+    for bin in range(N_bins):
+        for avg in range(N_avg):
+            _mu = MU[bin, avg] if MU[bin, avg] > 0 else 1e-8
+            _sigma = SIGMA[bin, avg] if SIGMA[bin, avg] > 0 else 1e-8
+            # try:
+            pdf_vals = stats.cauchy.pdf(args[0][bin][avg], loc=_mu, scale=_sigma)
+            ln_pdf_vals = np.log(pdf_vals + robustness_param)
+            log_lik_val = ln_pdf_vals.sum()
+
+            n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
+            k = N_params
+            BIC += k * np.log(n) - 2 * log_lik_val
+            # except:
+            #     BIC += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
+    return BIC
+
+
+def modelrun_fit(data, init=[1, 1, 1, 1, 1, 1], f=modelrun_crit, 
+N_bins=6, N_avg=4, N_params=2, mu_t_fixed=False, sigma_t_fixed=False, mu_R_fixed=False, sigma_R_fixed=False, ):
+    params_init = np.array(init)
+    mu_t_bounds = (None, None) if not mu_t_fixed else (0, 1e-8)
+    sigma_t_bounds = (None, None) if not sigma_t_fixed else (0, 1e-8)
+    mu_R_bounds = (None, None) if not mu_R_fixed else (0, 1e-8)
+    sigma_R_bounds = (None, None) if not sigma_R_fixed else (0, 1e-8)
+
+    res = minimize(f, params_init, args=(data, [N_bins, N_avg], N_params), 
+                   bounds=((0, None), (0, None), 
+                           mu_t_bounds, sigma_t_bounds, 
+                           mu_R_bounds, sigma_R_bounds))
+    return res.x, res.fun
+
+
+def plot_parameter_evolutionRun(p, axs=None, N_bins=6, N_avg=4):
+    (mu, sigma, mu_t, sigma_t, mu_R, sigma_R) = p
+    MU = np.zeros((N_bins, N_avg))
+    SIGMA = np.zeros((N_bins, N_avg))
+
+    for bin in range(N_bins):
+        for avg in range(N_avg):
+            MU[bin, avg] = mu + bin*mu_t + avg*mu_R
+            SIGMA[bin, avg] = sigma + bin*sigma_t + avg*sigma_R
+
+    if axs is None:
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5), subplot_kw={'projection': '3d'})
+
+    X, Y = np.meshgrid(np.arange(N_avg), np.arange(N_bins))
+    axs[0].plot_surface(X, Y, MU, cmap='winter', edgecolor='none')
+    axs[0].set_title(r'Value of $\mathrm{M}$')
+    axs[0].set_xticks([0, 1, 2, 3])
+    axs[0].set_xticklabels(['1', '0.67', '0.33', '0'])
+    axs[0].set_xlabel('Reward history', labelpad=5)
+    axs[0].set_ylim([-0.5, 5.5])
+    axs[0].set_yticks([0, 1, 2, 3, 4, 5])
+    axs[0].set_yticklabels(['0-10', '10-20', '20-30', '30-40', '40-50', '50-60'], va='center', ha='left', rotation=-15)
+    axs[0].set_ylabel('Time bin', labelpad=15)
+    axs[0].set_zlabel(r'$\mu$', labelpad=5)
+    axs[0].set_zlim([1.2, 1.8])
+    axs[0].set_zticks([1.2, 1.4, 1.6, 1.8])
+    # axs[0].set_zticklabels(['1.0', '1.5', '2.0'])
+    axs[0].text(0., 5, 2., r"$\mu R$: Effect of reward on $\mathrm{M}$", color='black', fontsize=12, zdir='x', zorder=10)
+    axs[0].text(3, 0.5, 1.2, r"$\mu t$: Effect of time on $\mathrm{M}$", color='black', fontsize=12, zdir=(0, 6, 1), zorder=10)
+    axs[0].text(0, 0, 0.6, r"$\mu_0$: Baseline $\mathrm{M}$", color='black', fontsize=12, zdir='x', zorder=10)
+
+    axs[1].plot_surface(X, Y, SIGMA, cmap='autumn', edgecolor='none')
+    axs[1].set_title(r'Value of $\Sigma$')
+    axs[1].set_xticks([0, 1, 2, 3])
+    axs[1].set_xticklabels(['1', '0.67', '0.33', '0'])
+    axs[1].set_xlabel('Reward history')
+    axs[1].set_ylim([-0.5, 5.5])
+    axs[1].set_yticks([0, 1, 2, 3, 4, 5])
+    axs[1].set_yticklabels(['0-10', '10-20', '20-30', '30-40', '40-50', '50-60'], va='center', ha='left', rotation=-15)
+    axs[1].set_ylabel('Time bin')
+    axs[1].set_zlabel(r'$\sigma$')
+    axs[1].set_zlim([.0, .3])
+    # axs[1].set_zticks([.2, .4, .6, 0.8])
+    # axs[1].set_zticklabels(['0.2', '0.4', '0.6', '0.8'])
+    axs[1].text(0, 5, 0, r"$\sigma R$: Effect of reward on $\Sigma$", color='black', fontsize=12, zdir=(4, 0, -.5), zorder=10)
+    axs[1].text(0, -1, .6, r"$\sigma t$: Effect of time on $\Sigma$", color='black', fontsize=12, zdir=(0, -10, .1), zorder=10)
+    axs[1].text(0, 0, 0.4, r"$\sigma_0$: Baseline $\Sigma$", color='black', fontsize=12, zdir='x', zorder=10)
+
