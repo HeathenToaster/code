@@ -771,6 +771,9 @@ def model_compare(params, *args, robustness_param=1e-20):
     """BIC to compare models with different number of parameters and curves"""
     alpha, theta, gamma, alpha_t, theta_prime, gamma_t, alpha_R, theta_second, gamma_R = params
     BIC = 0
+    N = 0
+    sum_log_likelihood = 0
+
     N_bins, N_avg = args[1]
     N_params = args[2]
     ALPHA = np.zeros((N_bins, N_avg))
@@ -792,10 +795,15 @@ def model_compare(params, *args, robustness_param=1e-20):
                 log_lik_val = ln_pdf_vals.sum()
 
                 n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
-                k = N_params
-                BIC += k * np.log(n) - 2 * log_lik_val
+                N += n
+                sum_log_likelihood += log_lik_val
+            
+
             except:
                 BIC += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
+
+    k = N_params
+    BIC = k * np.log(N) - 2 * sum_log_likelihood
     return BIC
 
 
@@ -1020,6 +1028,57 @@ def plot_full_distribution_run(data, animal, plot_fit=False, N_bins=6, N_avg=4):
         axs[j].legend()
 
 
+def crit_cauchy(params, *args, robustness_param=1e-20):
+    """negative log likelihood function for Wald distribution"""
+    mu, sigma = params
+    x = args
+    pdf_vals = stats.cauchy.pdf(x, loc=mu, scale=sigma) + robustness_param
+    ln_pdf_vals = np.log(pdf_vals)
+    log_lik_val = ln_pdf_vals.sum()
+    neg_log_lik_val = -log_lik_val
+    return neg_log_lik_val
+
+
+def cauchy_fit(x, mu_init=1, sigma_init=.1):
+    """fit Cauchy distribution"""
+    params_init = np.array([mu_init, sigma_init])
+    res = minimize(crit_cauchy, params_init, args=x, bounds=((0, None), (1e-8, None)))
+    return res.x, res.fun
+
+
+def example_cauchy_fit(_mu, _sigma, N=100, ax=None, color='k'):
+    """example of fitting Wald distribution"""
+    if ax is None:
+        ax = plt.gca()
+
+    runningtimes = stats.cauchy.rvs(loc=_mu, scale=_sigma, size=N)
+
+    bins = np.linspace(0, runningtimes.max(), int(max(runningtimes)))
+    ydata, xdata, _ = ax.hist(runningtimes, bins=bins,
+                              color=color, alpha=.5, zorder=1, 
+                              density=True, # weights=np.ones_like(runningtimes) / len(runningtimes),
+                              histtype="step", lw=2, cumulative=-1, label=f'N={N} simulated samples')
+
+    x = np.linspace(0.01, 500, 10000)
+    xdata = xdata[:-1]
+
+    # fittime = time.time()
+    (mu, sigma), lossCauchy = cauchy_fit(runningtimes)
+    ax.plot(x, stats.cauchy.sf(x, loc=mu, scale=sigma), color=color, lw=2, zorder=4, label=f'best fit')
+    ydatapdf, xdatapdf, _ = ax.hist(runningtimes, bins=bins, alpha=.0, zorder=1, density=True, histtype="step",)
+
+    ax.set_xlim(.1, 100)
+    ax.set_ylim(.001, 1.1)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel('log Wait time')
+    ax.set_ylabel('log 1-CDF')
+    if _mu == 0.1:
+        ax.legend()
+
+    return mu, sigma, lossCauchy
+
+
 def modelrun_crit(params, *args, robustness_param=1e-20):
     mu, sigma, mu_prime, sigma_prime, mu_second, sigma_second = params
     neg_log_lik_val = 0
@@ -1034,7 +1093,7 @@ def modelrun_crit(params, *args, robustness_param=1e-20):
 
     for bin in range(N_bins):
         for avg in range(N_avg):
-            _mu = MU[bin, avg] if MU[bin, avg] > 0 else 1e-8
+            _mu = MU[bin, avg]# if MU[bin, avg] > 0 else 1e-8
             _sigma = SIGMA[bin, avg] if SIGMA[bin, avg] > 0 else 1e-8
 
             pdf_vals = stats.cauchy.pdf(args[0][bin][avg], scale=_sigma, loc=_mu,)
@@ -1052,6 +1111,9 @@ def modelrun_compare(params, *args, robustness_param=1e-20):
     """BIC to compare models with different number of parameters and curves"""
     mu, sigma, mu_t, sigma_t, mu_R, sigma_R = params
     BIC = 0
+    N = 0
+    sum_log_likelihood = 0
+
     N_bins, N_avg = args[1]
     N_params = args[2]
     MU = np.zeros((N_bins, N_avg))
@@ -1072,10 +1134,12 @@ def modelrun_compare(params, *args, robustness_param=1e-20):
             log_lik_val = ln_pdf_vals.sum()
 
             n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
-            k = N_params
-            BIC += k * np.log(n) - 2 * log_lik_val
-            # except:
-            #     BIC += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
+
+            N += n
+            sum_log_likelihood += log_lik_val
+            
+    k = N_params
+    BIC = k * np.log(N) - 2 * sum_log_likelihood
     return BIC
 
 
