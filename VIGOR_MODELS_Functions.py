@@ -789,18 +789,16 @@ def model_compare(params, *args, robustness_param=1e-20):
         for avg in range(N_avg):
             _alpha = ALPHA[bin, avg] if ALPHA[bin, avg] > 0 else 1e-8
             _gamma = GAMMA[bin, avg]  # if GAMMA[bin, avg] > 0 else 1e-8
-            try:
-                pdf_vals = Wald_pdf(args[0][bin][avg], _alpha, _theta, _gamma)
-                ln_pdf_vals = np.log(pdf_vals + robustness_param)
-                log_lik_val = ln_pdf_vals.sum()
+            pdf_vals = Wald_pdf(args[0][bin][avg], _alpha, _theta, _gamma)
+            ln_pdf_vals = np.log(pdf_vals + robustness_param)
+            log_lik_val = ln_pdf_vals.sum()
 
-                n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
-                N += n
-                sum_log_likelihood += log_lik_val
-            
+            n = len(args[0][bin][avg]) if len(args[0][bin][avg]) > 0 else 1
+            N += n
+            sum_log_likelihood += log_lik_val
 
-            except:
-                BIC += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
+            # except:
+            #     BIC += 0  # add 0 instead of throwing an error when there is no data in a bin*avg
 
     k = N_params
     BIC = k * np.log(N) - 2 * sum_log_likelihood
@@ -942,6 +940,41 @@ def simple_progress_bar(current, total, animal, cond, bar_length=20):
     padding = int(bar_length - len(arrow)) * ' '
     ending = '\n' if current >= .99*total else '\r'
     print(f'{animal} {cond} Progress: [{arrow}{padding}] {int(fraction*100)}%  ', end=ending)
+
+
+def make_spider(ax, data, title, color, marker, labels=['var1', 'var2', 'var3', 'var4', 'var5', 'var6']):
+    if ax is None:
+        ax = plt.subplot(111, polar=True)
+
+    pi = 3.1415927
+    N = len(data)
+
+    # angle of each axis (divide the plot / number of variable)
+    angles = [n / float(N) * 2 * pi for n in range(N)]
+    angles += angles[:1]
+
+    # first axis on top
+    ax.set_theta_offset(pi / 2)
+    ax.set_theta_direction(-1)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels)#, size=8, color="grey", ha="center")
+
+    ax.set_rlabel_position(0)
+    ax.set_yticks([-3, -2, -1, 0, 1, 2, 3])
+    ax.set_yticklabels(["", "-2", "-1", "0", "1", "2", ""], color="grey")
+    ax.set_ylim(-3, 3)
+
+    values = data + data[:1]
+    ax.plot(angles, values, color=color, linestyle='solid', marker=marker, lw=2)
+    # ax.fill(angles, data, color=color, alpha=0.4)
+
+    # Add a title
+    ax.set_title(title, color='k')
+    r = np.arange(0, 1, .01)
+    theta = 2 * np.pi * r
+    ax.plot(theta, np.zeros_like(theta), color='k', linestyle='--', linewidth=1)
+
 
 #############################################################
 # Running time model functions
@@ -1137,7 +1170,7 @@ def modelrun_compare(params, *args, robustness_param=1e-20):
 
             N += n
             sum_log_likelihood += log_lik_val
-            
+
     k = N_params
     BIC = k * np.log(N) - 2 * sum_log_likelihood
     return BIC

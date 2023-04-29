@@ -40,7 +40,7 @@ def colorprint(text, color, backgroundcolor=None):
 #     list = [session for session in sessionlist if animal == session[0:6]]
 #     return (list)
 def matchsession(animal, sessionlist, AMPM=False):
-    list = [session for session in sessionlist if animal == session[0:6]]
+    list = [session for session in sessionlist if animal == session[0:len(animal)]]
     if AMPM:
         list = [session for session in list if int(session[-8:-6]) < 14] if AMPM == "AM" else [session for session in list if int(session[-8:-6]) > 14]
     return (list)
@@ -195,7 +195,9 @@ def save_as_pickle(root, data, animal, session, name):
 
 
 # load data that has been pickled
-def get_from_pickle(root, animal, session, name):
+def get_from_pickle(root, animal, session, name, biglesion=False):
+    if biglesion:
+        session = session.replace('L', '')
     sessionPath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session
     analysisPath = os.path.join(sessionPath, "Analysis")
     picklePath = os.path.join(analysisPath, name)
@@ -208,7 +210,7 @@ def get_from_pickle(root, animal, session, name):
             print("error loading pickle")
             pass
     else:
-        print("no pickle found")
+        print(f"no pickle found {session}")
         return None
 
 
