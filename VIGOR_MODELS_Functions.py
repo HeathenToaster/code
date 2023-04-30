@@ -953,7 +953,7 @@ def simple_progress_bar(current, total, animal, cond, bar_length=20):
     print(f'{animal} {cond} Progress: [{arrow}{padding}] {int(fraction*100)}%  ', end=ending)
 
 
-def make_spider(ax, data, title, color, marker, labels=['var1', 'var2', 'var3', 'var4', 'var5', 'var6']):
+def make_spider(ax, data, title, color, marker, linestyle, labels=['var1', 'var2', 'var3', 'var4', 'var5', 'var6']):
     if ax is None:
         ax = plt.subplot(111, polar=True)
 
@@ -977,7 +977,7 @@ def make_spider(ax, data, title, color, marker, labels=['var1', 'var2', 'var3', 
     ax.set_ylim(-3, 3)
 
     values = data + data[:1]
-    ax.plot(angles, values, color=color, linestyle='solid', marker=marker, lw=2)
+    ax.plot(angles, values, color=color, marker=marker, lw=2, linestyle=linestyle)
     # ax.fill(angles, data, color=color, alpha=0.4)
 
     # Add a title
