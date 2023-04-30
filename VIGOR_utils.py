@@ -312,3 +312,18 @@ def brainstatus_plot(status):
 # dst = "/home/david/Desktop/testcopy"
 # copytree(src, dst, ignore=include_patterns('test.p'))
 ############################################
+
+
+# weights = {'RatF00': 219.20, 'RatF01': 215.31, 'RatF02': 200.54, 
+#             'RatM00': 277.65, 'RatM01': 295.46, 'RatM02': 271.19}
+
+# compute the average weight for each animal from all sessions
+# need params.p for each session
+# avgweight = {}
+# for animal in animalList:
+#     avgweight[animal] = []
+#     for session in matchsession(animal,  dist60+dist90+dist120 + TM20+TM10+TM2+TMrev2+TMrev10+TMrev20):
+#         biglesion = True if 'L' in session else False
+#         _params = get_from_pickle(root, animal[0:6], session, name="params.p", biglesion=biglesion)
+#         avgweight[animal].extend([_params['weight']])
+#     avgweight[animal] = sum(avgweight[animal]) / len(avgweight[animal])

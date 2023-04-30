@@ -891,7 +891,7 @@ def test_all_conds_between_themselves(conds, vars, ax=None):
                     continue
                 data1 = [var[animal][cond1] for animal in list(var.keys())]
                 data2 = [var[animal][cond2] for animal in list(var.keys())]
-                s, p = stats.ttest_ind(data1, data2)
+                s, p = stats.wilcoxon(data1, data2)
                 # print(f"{idx} {cond1} vs {cond2}: {p:.3f} {'*' if p < .05 else ''}")
 
                 if p < .05:
@@ -912,10 +912,21 @@ def dict_to_xticklabels(d, labels=['αt', 'αR', 'γt', 'γR']):
     return result
 
 
+def exact_mc_perm_test(x, y, nmc=10000):
+    n = len(x)
+    k = 0
+    diff = np.abs(np.mean(x) - np.mean(y))
+    z = np.concatenate([x, y])
+    for j in range(nmc):
+        np.random.shuffle(z)
+        k += diff <= np.abs(np.mean(z[:n]) - np.mean(z[n:]))
+    p_value = k / nmc
+    return p_value
+
+
 def test_all_keys_between_themselves(losses, keys, ax=None):
     """dirty stats to test all conditions against each other, but with keys"""
-    if ax is None:
-        ax = plt.gca()
+    if ax is None: ax = plt.gca()
     c = 0
     for i, key1 in enumerate(keys):
         for j, key2 in enumerate(keys):
@@ -923,13 +934,13 @@ def test_all_keys_between_themselves(losses, keys, ax=None):
                 continue
             data1 = [losses[animal][key1]/losses[animal][False, False, False, False] for animal in list(losses.keys())]
             data2 = [losses[animal][key2]/losses[animal][False, False, False, False] for animal in list(losses.keys())]
-            s, p = stats.ttest_ind(data1, data2)
+            s, p = stats.wilcoxon(data1, data2)
             print(f"{key1} vs {key2}: {p:.3f} {'*' if p < .05 else ''}")
 
             if p < .05:
                 y = np.max([np.mean(data1), np.mean(data2)]) + c
-                ax.plot((i+2, j+2), (y, y), color='g')
-                ax.scatter((i+j+4)/2, y, color='g', marker=r'$\ast$')
+                ax.plot((i+1, j+1), (y, y), color='g')
+                ax.scatter((i+j+2)/2, y, color='g', marker=r'$\ast$')
                 c += 0.001
 
 
