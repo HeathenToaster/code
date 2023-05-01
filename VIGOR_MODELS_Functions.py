@@ -8,11 +8,6 @@ from scipy import stats
 from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize
-try: 
-    import pingouin as pg
-except:
-    print("pingouin not installed")
-    pass
 
 from VIGOR_utils import *
 
@@ -697,7 +692,7 @@ def example_wald_fit(mean, std, A, t0, N=100, ax=None, color='k'):
     bins = np.linspace(0, waits.max(), int(max(waits)))
     ydata, xdata, _ = ax.hist(waits, bins=bins,
                               color=color, alpha=.5, zorder=1, 
-                              density=True, # weights=np.ones_like(waits) / len(waits),
+                              density=True,  # weights=np.ones_like(waits) / len(waits),
                               histtype="step", lw=2, cumulative=-1, label=f'N={N} simulated samples')
 
     x = np.linspace(0.01, 500, 10000)
