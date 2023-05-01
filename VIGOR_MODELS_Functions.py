@@ -8,6 +8,11 @@ from scipy import stats
 from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize
+try: 
+    import pingouin as pg
+except:
+    print("pingouin not installed")
+    pass
 
 from VIGOR_utils import *
 
@@ -1251,3 +1256,80 @@ def plot_parameter_evolutionRun(p, axs=None, N_bins=6, N_avg=4):
     axs[1].text(0, 5, 0, r"$\sigma R$: Effect of reward on $\Sigma$", color='black', fontsize=12, zdir=(4, 0, -.5), zorder=10)
     axs[1].text(0, -1, .6, r"$\sigma t$: Effect of time on $\Sigma$", color='black', fontsize=12, zdir=(0, -10, .1), zorder=10)
     axs[1].text(0, 0, 0.4, r"$\sigma_0$: Baseline $\Sigma$", color='black', fontsize=12, zdir='x', zorder=10)
+
+
+def compute_Ri(parameter, animalList, conditions=["60", "90", "120", "20", "10", "2", "rev10", "rev20"]):
+    '''Compute the repeatability index for a given parameter.
+    Ri = Vinter / (Vinter + Vintra) as defined in:
+    Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists. Shinichi Nakagawa1 and Holger Schielzeth
+    '''
+    v_intra = 0
+    v_inter = 0
+
+    for animal in animalList:
+        d = [parameter[animal][cond] for cond in conditions]
+        v_intra += np.var(d)
+    v_intra /= len(animalList)
+
+    for cond in conditions:
+        d = [parameter[animal][cond] for animal in animalList]
+        v_inter += np.var(d)
+    v_inter /= len(conditions)
+
+    return v_inter / (v_intra + v_inter)
+
+
+def interpret_Ri(score):
+    """Interpret the Repeatibility index.
+    Cicchetti D. Guidelines, criteria, and rules of thumb for evaluating normed and standardized assessment instruments in psychology. Psychological Assessment. 1994;6(4):284-290
+    Koo T, Li M. A Guideline of Selecting and Reporting Intraclass Correlation Coefficients for Reliability Research. Journal of Chiropractic Medicine. 2016;15(2):155-163
+    ^ These two papers interpret the ICC score. # from https://rowannicholls.github.io/python/statistics/agreement/intraclass_correlation.html
+    ICC varies from 0 to 1, Ri from 0.5 to 1. We use the same interpretation as Koo and Li for equivalent Ri scores.
+    """
+    if score < 0.7:
+        return 'poor'
+    elif score < 0.8:
+        return 'moderate'
+    elif score < 0.9:
+        return 'good'
+    elif score <= 1:
+        return 'excellent'
+    else:
+        raise ValueError(f'Invalid value for the Ri score: {score}')
+
+
+def intuition_Ri(gain=0):
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    IDs = ["ID1", "ID2", "ID3", "ID4", "ID5", "ID6", "ID7", "ID8"]
+    conditions = ['cond1', 'cond2', 'cond3', 'cond4', 'cond5', 'cond6', 'cond7', 'cond8']
+    mock = {ID: {k: 0 for k in conditions} for ID in IDs}
+    for idx, ID in enumerate(IDs):
+        for cond in conditions:
+            mock[ID][cond] = np.random.normal(idx*gain, .25)
+
+    Zmock = {ID: {key: (mock[ID][key] - np.mean([mock[ID][key] for ID in IDs]))/np.std([mock[ID][key] for ID in IDs]) for key in mock[ID]} for ID in IDs}
+
+    np.random.seed(42)
+    colors = [np.random.rand(3) for ID in IDs]
+    for c, ID in enumerate(IDs):
+        zscores = [Zmock[ID][cond] for cond in conditions]
+        axs[0].plot(np.arange(8), zscores, color=colors[c])
+        pdf = stats.norm.pdf(np.linspace(-3, 3, 600), np.mean(zscores), np.std(zscores))
+        axs[1].plot(pdf, np.linspace(-3, 3, 600), color=colors[c])
+        Ri = compute_Ri(Zmock, IDs, conditions)
+        axs[1].annotate(f'Ri = {Ri:.2f}: {interpret_Ri(Ri)}', xy=(0.05, 0.9), xycoords='axes fraction')
+    return fig, axs
+
+
+# def compute_ICC(parameter):
+        # different metric but same result as Ri, but more complicated to compute (need pingouin package)
+#     df = pd.DataFrame.from_dict(parameter, orient='index')
+#     df['index'] = df.index
+#     df = pd.melt(df, id_vars=['index'], value_vars=list(df)[:-1])
+
+#     results = pg.intraclass_corr(df, 'index', 'variable', 'value')
+#     results = results.set_index('Description')
+#     icc = results.loc['Single random raters', 'ICC']
+#     lower = results.loc['Single random raters', 'CI95%'][0]
+#     upper = results.loc['Single random raters', 'CI95%'][1]
+#     return icc, lower, upper
