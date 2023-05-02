@@ -8,6 +8,7 @@ from scipy import stats
 import dabest
 import pandas as pd
 
+from VIGOR_utils import *
 
 # save animal plot as png
 def save_sessionplot_as_png(root, animal, session, filename,
@@ -250,4 +251,319 @@ def plot_figBinMean(ax, dataLeft, dataRight, color, ylim):
     # when plot is ax, swarm is ax, contrast is ax.contrast_axes.
     ax.axvspan(-0.5, 0.5, color='grey', alpha=10/250)
     ax.axvspan(0.5, 1.5, color='grey', alpha=90/250)
+    return ax
+
+
+# group bin data by reward%
+def poolByReward(data, proba, blocks, rewardproba):
+    output = []
+    for i in range(0, len(blocks)):
+        if rewardproba[i] == proba:
+            if len(data) == 1:
+                output.append(data[0][i])
+            if len(data) == 2:  # usually for data like dataLeft+dataRight
+                output.append(data[0][i]+data[1][i])
+            if len(data) > 2:
+                print("too much data, not intended")
+    return output
+
+
+# separate data by condition
+def separate_data(animal_list, session_list, dataLeft, dataRight, experiment, params, datatype, bin):
+
+    def fix_singleRun(data):
+        recoveredRun = []
+        indexList = []
+        fixedList = data.copy()
+        for index, ele in enumerate(data):
+            if not isinstance(ele, list):
+                recoveredRun.append(np.float64(ele))
+                indexList.append(index)
+        if indexList:
+            if indexList[0] != 0:
+                fixedList = np.delete(fixedList, indexList[1:])
+                fixedList[indexList[0]] = recoveredRun
+            if indexList[0] == 0:
+                fixedList = np.delete(fixedList, indexList)
+                fixedList = np.append(fixedList, recoveredRun)
+        return fixedList
+
+    if experiment == 'Distance':
+        if bin == False:
+            data90_60, data90_90, data90_120, data10_60, data10_90, data10_120 = ({} for _ in range(6))
+            for animal in animal_list:
+                data90_60[animal], data90_90[animal], data90_120[animal], data10_60[animal], data10_90[animal], data10_120[animal] = ([] for _ in range(6))
+                for session in sorted(matchsession(animal, session_list)):
+                    if params[animal, session]['treadmillDist'] == 60:
+                        if datatype == 'nb_runs':
+                            data90_60[animal] = np.append(data90_60[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_60[animal] = np.append(data10_60[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_60[animal] = np.append(data90_60[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_60[animal] = np.append(data10_60[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillDist'] == 90:
+                        if datatype == 'nb_runs':
+                            data90_90[animal] = np.append(data90_90[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_90[animal] = np.append(data10_90[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_90[animal] = np.append(data90_90[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_90[animal] = np.append(data10_90[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillDist'] == 120:
+                        if datatype == 'nb_runs':
+                            data90_120[animal] = np.append(data90_120[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_120[animal] = np.append(data10_120[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_120[animal] = np.append(data90_120[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_120[animal] = np.append(data10_120[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+            return data90_60, data90_90, data90_120, data10_60, data10_90, data10_120
+
+        if bin == True:
+            data60, data90, data120 = ({} for _ in range(3))
+            for animal in animal_list:
+                data60[animal], data90[animal], data120[animal] = ({bin: [] for bin in range(0, (12))} for i in range(3))
+                for session in sorted(matchsession(animal, session_list)):
+                    if params[animal, session]['treadmillDist'] == 60:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data60[animal][i] = np.append(data60[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data60[animal][i] = np.append(data60[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                data60[animal][i] = fix_singleRun(data60[animal][i])
+
+                    if params[animal, session]['treadmillDist'] == 90:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data90[animal][i] = np.append(data90[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data90[animal][i] = np.append(data90[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                data90[animal][i] = fix_singleRun(data90[animal][i])
+
+                    if params[animal, session]['treadmillDist'] == 120:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data120[animal][i] = np.append(data120[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data120[animal][i] = np.append(data120[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                data120[animal][i] = fix_singleRun(data120[animal][i])
+
+            return data60, data90, data120
+
+    if experiment == 'TM_ON':
+        if bin == False:
+            data90_rev20, data90_rev10, data90_rev2, data90_2, data90_10, data90_20, data10_rev20, data10_rev10, data10_rev2, data10_2, data10_10, data10_20 = ({} for _ in range(12))
+            for animal in animal_list:
+                data90_rev20[animal], data90_rev10[animal], data90_rev2[animal], data90_2[animal], data90_10[animal], data90_20[animal], data10_rev20[animal], data10_rev10[animal], data10_rev2[animal], data10_2[animal], data10_10[animal], data10_20[animal] = ([] for _ in range(12))
+                for session in sorted(matchsession(animal, session_list)):
+                    if params[animal, session]['treadmillSpeed'] == [-20, -20, -20, -20, -20, -20, -20, -20, -20, -20, -20, -20]:
+                        if datatype == 'nb_runs':
+                            data90_rev20[animal] = np.append(data90_rev20[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_rev20[animal] = np.append(data10_rev20[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_rev20[animal] = np.append(data90_rev20[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_rev20[animal] = np.append(data10_rev20[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillSpeed'] == [-10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10]:
+                        if datatype == 'nb_runs':
+                            data90_rev10[animal] = np.append(data90_rev10[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_rev10[animal] = np.append(data10_rev10[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_rev10[animal] = np.append(data90_rev10[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_rev10[animal] = np.append(data10_rev10[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillSpeed'] == [-2,  -2,  -2,  -2,  -2,  -2, - 2,  -2,  -2,  -2,  -2,  -2]:
+                        if datatype == 'nb_runs':
+                            data90_rev2[animal] = np.append(data90_rev2[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_rev2[animal] = np.append(data10_rev2[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_rev2[animal] = np.append(data90_rev2[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_rev2[animal] = np.append(data10_rev2[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillSpeed'] == [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]:
+                        if datatype == 'nb_runs':
+                            data90_2[animal] = np.append(data90_2[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_2[animal] = np.append(data10_2[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_2[animal] = np.append(data90_2[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_2[animal] = np.append(data10_2[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillSpeed'] == [10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10]:
+                        if datatype == 'nb_runs':
+                            data90_10[animal] = np.append(data90_10[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_10[animal] = np.append(data10_10[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_10[animal] = np.append(data90_10[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_10[animal] = np.append(data10_10[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                    if params[animal, session]['treadmillSpeed'] == [20,  20,  20,  20,  20,  20,  20,  20,  20,  20,  20,  20]:
+                        if datatype == 'nb_runs':
+                            data90_20[animal] = np.append(data90_20[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                            data10_20[animal] = np.append(data10_20[animal], [i/(int((params[animal, session]['blocks'][block][1]-params[animal, session]['blocks'][block][0])/60)) for block, i in enumerate(poolByReward([dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock']))])
+                        else:
+                            data90_20[animal] = np.append(data90_20[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_ON"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+                            data10_20[animal] = np.append(data10_20[animal], [i for i in poolByReward([dataRight[animal, session], dataLeft[animal, session]], params[animal, session]["rewardP_OFF"][0], params[animal, session]['blocks'], params[animal, session]['rewardProbaBlock'])])
+            return data90_rev20, data90_rev10, data90_rev2, data90_2, data90_10, data90_20, data10_rev20, data10_rev10, data10_rev2, data10_2, data10_10, data10_20
+
+        if bin == True:
+            datarev20, datarev10, datarev2, data2, data10, data20 = ({} for _ in range(6))
+            for animal in animal_list:
+                datarev20[animal], datarev10[animal], datarev2[animal], data2[animal], data10[animal], data20[animal] = ({bin: [] for bin in range(0, (12))} for i in range(6))
+                for session in sorted(matchsession(animal, session_list)):
+                    if params[animal, session]['treadmillSpeed'] == [-20, -20, -20, -20, -20, -20, -20, -20, -20, -20, -20, -20]:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                datarev20[animal][i] = np.append(datarev20[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                datarev20[animal][i] = np.append(datarev20[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                datarev20[animal][i] = fix_singleRun(datarev20[animal][i])
+
+                    if params[animal, session]['treadmillSpeed'] == [-10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10]:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                datarev10[animal][i] = np.append(datarev10[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                datarev10[animal][i] = np.append(datarev10[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                datarev10[animal][i] = fix_singleRun(datarev10[animal][i])
+
+                    if params[animal, session]['treadmillSpeed'] == [- 2,  -2,  -2,  -2,  -2,  -2, - 2,  -2,  -2,  -2,  -2,  -2]:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                datarev2[animal][i] = np.append(datarev2[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                datarev2[animal][i] = np.append(datarev2[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                datarev2[animal][i] = fix_singleRun(datarev2[animal][i])
+
+                    if params[animal, session]['treadmillSpeed'] == [2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2]:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data2[animal][i] = np.append(data2[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data2[animal][i] = np.append(data2[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                data2[animal][i] = fix_singleRun(data2[animal][i])
+
+                    if params[animal, session]['treadmillSpeed'] == [10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10]:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data10[animal][i] = np.append(data10[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data10[animal][i] = np.append(data10[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                data10[animal][i] = fix_singleRun(data10[animal][i])
+                    if params[animal, session]['treadmillSpeed'] == [20,  20,  20,  20,  20,  20,  20,  20,  20,  20,  20,  20]:
+                        if datatype == 'nb_runs':
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data20[animal][i] = np.append(data20[animal][i], [b/(int((params[animal, session]['blocks'][i][1]-params[animal, session]['blocks'][i][0])/60)) for b in dataLeft[animal, session].values()][i])
+                        else:
+                            for i in range(0, len(params[animal, session]['blocks'])):
+                                data20[animal][i] = np.append(data20[animal][i], [dataRight[animal, session][i] + dataLeft[animal, session][i]])
+                                data20[animal][i] = fix_singleRun(data20[animal][i])
+            return datarev20, datarev10, datarev2, data2, data10, data20
+
+
+def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, experiment, params, plot_axes, ticks, titles_plot_xaxis_yaxis, datatype, marker, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    ax.set_title(titles_plot_xaxis_yaxis[0], fontsize=16)
+    ax.set_xlabel(titles_plot_xaxis_yaxis[1], fontsize=16)
+    ax.set_ylabel(titles_plot_xaxis_yaxis[2], fontsize=16)
+    ax.set_xlim(plot_axes[0], plot_axes[1])
+    ax.set_ylim(plot_axes[2], plot_axes[3])
+    if ticks[0] != []:
+        ax.set_xticks(ticks[0])
+    if ticks[1] != []:
+        ax.set_yticks(ticks[1])
+    ax.tick_params(width=1.5, labelsize=12)
+    # if experiment == 'TM_ON': ax.tick_params(axis = 'x', rotation = 45)
+    ax.spines['top'].set_color("none")
+    ax.spines['right'].set_color("none")
+    ax.spines['bottom'].set_linewidth(1.5)
+    ax.spines['left'].set_linewidth(1.5)
+    ax.yaxis.set_label_coords(-0.22, 0.5)
+    ax.patch.set_facecolor('grey')
+    ax.patch.set_alpha(90/250 if plot == "90%" else
+                       10/250 if plot == "10%" else
+                       0)
+    ax.yaxis.label.set_color('dodgerblue' if datatype == 'avgrunspeed' else
+                             'red' if datatype == 'runningtime' else
+                             'orange' if datatype == 'idletime' else
+                             'red'if datatype == 'maxspeed' else 'k')
+
+    a, b, c, d, e, f, g, h, i, j, k, l = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    if experiment == 'Distance':
+        data90_60, data90_90, data90_120, data10_60, data10_90, data10_120 = separate_data(animal_list, session_list, dataLeft, dataRight, experiment, params, datatype, False)
+        for animal in animal_list:
+            if datatype == 'runningtime':
+                realdist60, realdist90, realdist120 = ticks[2]
+                x = (np.nanmean(realdist60[animal]), np.nanmean(realdist90[animal]), np.nanmean(realdist120[animal]))
+                ax.set_xticks([int(np.nanmean([np.nanmean(realdist60[animal]) for animal in animal_list])),
+                               int(np.nanmean([np.nanmean(realdist90[animal]) for animal in animal_list])),
+                               int(np.nanmean([np.nanmean(realdist120[animal]) for animal in animal_list]))])
+                ax.set_xlim(plot_axes[0], plot_axes[1])
+            else:
+                x = (60, 90, 120)
+
+            if datatype == 'nb_runs':
+                a = np.median(data90_60[animal])
+                b = np.median(data90_90[animal])
+                c = np.median(data90_120[animal])
+                d = np.median(data10_60[animal])
+                e = np.median(data10_90[animal])
+                f = np.median(data10_120[animal])
+            else:
+                a = np.nanmedian([item for sublist in data90_60[animal] for item in sublist])
+                b = np.nanmedian([item for sublist in data90_90[animal] for item in sublist])
+                c = np.nanmedian([item for sublist in data90_120[animal] for item in sublist])
+                d = np.nanmedian([item for sublist in data10_60[animal] for item in sublist])
+                e = np.nanmedian([item for sublist in data10_90[animal] for item in sublist])
+                f = np.nanmedian([item for sublist in data10_120[animal] for item in sublist])
+
+            if plot == "90%":
+                ax.plot(x, (a, b, c), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
+                # ax.errorbar(x, (a, b, c), yerr = (stats.std([item for sublist in data90_60[animal]  for item in sublist]),  stats.std([item for sublist in data90_90[animal]  for item in sublist]), stats.std([item for sublist in data90_120[animal] for item in sublist])), color = marker[animal][0], linestyle=marker[animal][2])
+            if plot == "10%":
+                ax.plot(x, (d, e, f), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
+                # ax.errorbar(x, (d, e, f), yerr = (stats.std([item for sublist in data10_60[animal]  for item in sublist]),  stats.std([item for sublist in data10_90[animal]  for item in sublist]), stats.std([item for sublist in data10_120[animal] for item in sublist])), color = marker[animal][0], linestyle=marker[animal][2])
+            if plot == "%":
+                ax.plot(x, (d/a, e/b, f/c), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
+
+    if experiment == 'TM_ON':
+        data90_rev20, data90_rev10, data90_rev2, data90_2, data90_10, data90_20, data10_rev20, data10_rev10, data10_rev2, data10_2, data10_10, data10_20 = separate_data(animal_list, session_list, dataLeft, dataRight, experiment, params, datatype, False)
+        for animal in animal_list:
+            x = (-20, -10, -2, 2, 10, 20)
+            if datatype == 'nb_runs':
+                a = np.median(data90_rev20[animal])
+                b = np.median(data90_rev10[animal])
+                c = np.median(data90_rev2[animal])
+                d = np.median(data90_2[animal])
+                e = np.median(data90_10[animal])
+                f = np.median(data90_20[animal])
+
+                g = np.median(data10_rev20[animal])
+                h = np.median(data10_rev10[animal])
+                i = np.median(data10_rev2[animal])
+                j = np.median(data10_2[animal])
+                k = np.median(data10_10[animal])
+                l = np.median(data10_20[animal])
+            else:
+                a = np.nanmedian([item for sublist in data90_rev20[animal] for item in sublist])
+                b = np.nanmedian([item for sublist in data90_rev10[animal] for item in sublist])
+                c = np.nanmedian([item for sublist in data90_rev2[animal] for item in sublist])
+                d = np.nanmedian([item for sublist in data90_2[animal] for item in sublist])
+                e = np.nanmedian([item for sublist in data90_10[animal] for item in sublist])
+                f = np.nanmedian([item for sublist in data90_20[animal] for item in sublist])
+
+                g = np.nanmedian([item for sublist in data10_rev20[animal] for item in sublist])
+                h = np.nanmedian([item for sublist in data10_rev10[animal] for item in sublist])
+                i = np.nanmedian([item for sublist in data10_rev2[animal] for item in sublist])
+                j = np.nanmedian([item for sublist in data10_2[animal] for item in sublist])
+                k = np.nanmedian([item for sublist in data10_10[animal] for item in sublist])
+                l = np.nanmedian([item for sublist in data10_20[animal] for item in sublist])
+
+            if plot == "90%":
+                ax.plot(x, (a, b, c, d, e, f), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
+            if plot == "10%":
+                ax.plot(x, (g, h, i, j, k, l), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
+            if plot == "%":
+                ax.plot(x, (g/a, h/b, i/c, j/d, k/e, l/f), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
     return ax
