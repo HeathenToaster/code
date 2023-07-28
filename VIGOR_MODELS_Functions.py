@@ -1198,7 +1198,7 @@ def modelrun_fit(data, init=[1, 1, 1, 1, 1, 1], f=modelrun_crit,
     sigma_R_bounds = (None, None) if not sigma_R_fixed else (0, 1e-8)
 
     res = minimize(f, params_init, args=(data, [N_bins, N_avg], N_params),
-                   bounds=((0, None), (0, None),
+                   bounds=((None, None), (None, None),
                            mu_t_bounds, sigma_t_bounds,
                            mu_R_bounds, sigma_R_bounds))
     return res.x, res.fun
@@ -1328,3 +1328,79 @@ def intuition_Ri(gain=0):
 #     lower = results.loc['Single random raters', 'CI95%'][0]
 #     upper = results.loc['Single random raters', 'CI95%'][1]
 #     return icc, lower, upper
+
+
+def Ri_color(score):
+    if score < 0.7:
+        return 'r'
+    elif score < 0.8:
+        return 'orange'
+    elif score < 0.9:
+        return 'g'
+    else:
+        raise ValueError(f'Invalid value for the Ri score: {score}')
+
+
+def intact_vs_lesion_Zscore(ax, num1, num2, data, center, height, yerr=None, dh=.05, barh=.05, fs=14, maxasterix=None):
+    """ 
+    Annotate barplot with p-values.
+
+    :param num1: number of left bar to put bracket over
+    :param num2: number of right bar to put bracket over
+    :param data: string to write or number for generating asterixes
+    :param center: centers of all bars (like plt.bar() input)
+    :param height: heights of all bars (like plt.bar() input)
+    :param yerr: yerrs of all bars (like plt.bar() input)
+    :param dh: height offset over bar / bar + yerr in axes coordinates (0 to 1)
+    :param barh: bar height in axes coordinates (0 to 1)
+    :param fs: font size
+    :param maxasterix: maximum number of asterixes to write (for very small p-values)
+    """
+
+    if type(data) is str:
+        text = data
+    else:
+        # * is p < 0.05
+        # ** is p < 0.005
+        # *** is p < 0.0005
+        # etc.
+        text = ''
+        p = .05
+
+        while data < p:
+            text += '*'
+            p /= 10.
+
+            if maxasterix and len(text) == maxasterix:
+                break
+
+        if len(text) == 0:
+            text = 'n. s.'
+
+    lx, ly = center[num1], height[num1]
+    rx, ry = center[num2], height[num2]
+
+    if yerr:
+        ly += yerr[num1]
+        ry += yerr[num2]
+
+    ax_y0, ax_y1 = ax.get_ylim()
+    # dh *= (ax_y1 - ax_y0)
+    # barh *= (ax_y1 - ax_y0)
+
+    y = max(ly, ry) + dh
+
+    barx = [lx, lx, rx, rx]
+    bary = [y, y+barh, y+barh, y]
+    mid = (y+dh, (lx+rx)/2)
+
+    ax.plot(bary, barx, c='black')
+
+    # kwargs = dict(ha='center', va='bottom')
+    # if fs is not None:
+    #     kwargs['fontsize'] = fs
+
+    ax.text(*mid, text,
+    #  **kwargs, 
+     rotation=-90, fontsize=fs)
+
