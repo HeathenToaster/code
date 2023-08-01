@@ -8,8 +8,8 @@ from itertools import chain
 
 
 # conversion
-def inch2cm(value): return value / 2.54
-def cm2inch(value): return value * 2.54
+def inch2cm(value): return value * 2.54
+def cm2inch(value): return value / 2.54
 
 
 # util func to print in a given color

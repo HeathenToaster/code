@@ -41,8 +41,8 @@ startTimeNotebook = datetime.datetime.now()
 
 
 # conversion
-def inch2cm(value): return value / 2.54
-def cm2inch(value): return value * 2.54
+def inch2cm(value): return value * 2.54
+def cm2inch(value): return value / 2.54
 
 
 # new px to cm conversion. To correct camera lens distorsion (pixels in the
