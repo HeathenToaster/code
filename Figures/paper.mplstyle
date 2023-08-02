@@ -526,7 +526,7 @@ ytick.labelsize:     5  # font size of the tick labels
 ## ***************************************************************************
 #legend.loc:           best
 #legend.frameon:       True     # if True, draw the legend on a background patch
-#legend.framealpha:    0.8      # legend patch transparency
+legend.framealpha:    0.6      # legend patch transparency
 #legend.facecolor:     inherit  # inherit from axes.facecolor; or color spec
 #legend.edgecolor:     0.8      # background patch boundary color
 #legend.fancybox:      True     # if True, use a rounded box for the
@@ -678,7 +678,7 @@ figure.constrained_layout.use: True  # When True, automatically make plot
 ## The default savefig parameters can be different from the display parameters
 ## e.g., you may want a higher resolution, or to make the figure
 ## background white
-#savefig.dpi:       figure      # figure dots per inch or 'figure'
+savefig.dpi:       300      # figure dots per inch or 'figure'
 #savefig.facecolor: auto        # figure face color when saving
 #savefig.edgecolor: auto        # figure edge color when saving
 #savefig.format:    png         # {png, ps, pdf, svg}
