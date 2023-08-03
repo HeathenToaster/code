@@ -44,6 +44,6 @@ Figures/track15min.png
 dataStef.zip
 chaos.ipynb
 VIGOR-Behav_Analysis (copy).ipynb
-*.png
+
 *.pyc
 *checkpoint.ipynb
