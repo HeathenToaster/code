@@ -10,6 +10,20 @@ import pandas as pd
 
 from VIGOR_utils import *
 
+
+def space_axes(ax=None, x_ratio_left=1/30, x_ratio_right=1/30, y_ratio=1/30):
+    if ax is None:
+        fig, ax = plt.subplots()
+    min_x, max_x = ax.get_xlim()
+    min_y, max_y = ax.get_ylim()
+
+    ax.set_xlim(min_x - x_ratio_left * abs(max_x - min_x), max_x + x_ratio_right * abs(max_x - min_x))
+    ax.set_ylim(min_y - y_ratio * abs(max_y - min_y), max_y)
+
+    ax.spines['left'].set_bounds(min_y, max_y)
+    ax.spines['bottom'].set_bounds(min_x, max_x)
+
+
 # save animal plot as png
 def save_sessionplot_as_png(root, animal, session, filename,
                             dpi='figure', transparent=True, background='auto'):
