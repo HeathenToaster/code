@@ -11,6 +11,44 @@ import pandas as pd
 from VIGOR_utils import *
 
 
+def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_zero=None, txt=True, cmap='autumn'):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(0.5, 0.5))
+    if fig is None:
+        fig = plt.gcf()
+
+    ax.xaxis.set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    N = 4
+    c = np.arange(1, 100*N + 1)
+    cmap_ = plt.get_cmap(cmap, 100*N)
+    dummy_ax = ax.scatter(c, c, c=c, cmap=cmap_)
+    ax.cla()
+
+
+    shift = 50
+    if show_zero is not None:
+        cb=fig.colorbar(dummy_ax, cax=ax, ticks=[np.min(c)+shift, show_zero, np.max(c)-shift])
+        cb.ax.set_yticklabels(['Low', '0', 'High'], rotation=0, fontsize=5)
+        ax.axhline(show_zero, color='k', lw=0.5, ls='--')
+
+    else:
+        cb=fig.colorbar(dummy_ax, cax=ax, ticks=[np.min(c)+shift, np.max(c)-shift])
+        cb.ax.set_yticklabels(['Low', 'High'], rotation=0, fontsize=5)
+
+    if not txt:
+        cb.ax.set_yticklabels([])
+
+
+    cb.outline.set_edgecolor(None)
+    cb.set_label(label, labelpad=labelpad,y=y, rotation=0, fontsize=7)
+    cb.ax.yaxis.set_tick_params(size=0)
+
+
 def space_axes(ax=None, x_ratio_left=1/30, x_ratio_right=1/30, y_ratio=1/30):
     if ax is None:
         fig, ax = plt.subplots()
