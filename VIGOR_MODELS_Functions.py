@@ -1317,7 +1317,7 @@ def intuition_Ri(gain=0):
 
 
 # def compute_ICC(parameter):
-        # different metric but same result as Ri, but more complicated to compute (need pingouin package)
+#     '''different metric but same result as Ri, but more complicated to compute (need pingouin package)'''
 #     df = pd.DataFrame.from_dict(parameter, orient='index')
 #     df['index'] = df.index
 #     df = pd.melt(df, id_vars=['index'], value_vars=list(df)[:-1])

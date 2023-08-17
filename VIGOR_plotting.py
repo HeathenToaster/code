@@ -11,7 +11,7 @@ import pandas as pd
 from VIGOR_utils import *
 
 
-def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_zero=None, txt=True, cmap='autumn'):
+def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_zero=None, txt=True, cmap='autumn', labels=['Low', '0', 'High']):
     if ax is None:
         fig, ax = plt.subplots(figsize=(0.5, 0.5))
     if fig is None:
@@ -33,12 +33,12 @@ def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_z
     shift = 50
     if show_zero is not None:
         cb=fig.colorbar(dummy_ax, cax=ax, ticks=[np.min(c)+shift, show_zero, np.max(c)-shift])
-        cb.ax.set_yticklabels(['Low', '0', 'High'], rotation=0, fontsize=5)
+        cb.ax.set_yticklabels([labels[0], labels[1], labels[2]], rotation=0, fontsize=5)
         ax.axhline(show_zero, color='k', lw=0.5, ls='--')
 
     else:
         cb=fig.colorbar(dummy_ax, cax=ax, ticks=[np.min(c)+shift, np.max(c)-shift])
-        cb.ax.set_yticklabels(['Low', 'High'], rotation=0, fontsize=5)
+        cb.ax.set_yticklabels([labels[0], labels[2]], rotation=0, fontsize=5)
 
     if not txt:
         cb.ax.set_yticklabels([])

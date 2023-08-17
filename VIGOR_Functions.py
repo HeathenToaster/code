@@ -1775,8 +1775,8 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
     arr[index] = 0
     time.sleep(0.1*(index+1))
     for sessionindex, session in enumerate(sessionList):
-        clear_output(wait=True)
-        update_progress(arr[:], root)
+         # clear_output(wait=True)
+        # update_progress(arr[:], root)
         figPath = root + os.sep + animal + os.sep + "Experiments" + os.sep + session + os.sep + "Figures" + os.sep + "recapFIG%s.png" %session
         if redoCompute == True:
 
@@ -1928,19 +1928,21 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
             # Compute boundaries
             border = 5  # define arbitrary border
             leftBoundaryPeak[animal, session], rightBoundaryPeak[animal, session], kde[animal, session] = extract_boundaries(rawPositionX[animal, session], animal, session, params[animal, session]['treadmillDist'], height=0.001)
-            # for s in boundariesBug:
-            #     if animal + " " + session == s[0]:
-            #         params[animal, session]["boundaries"] = s[1]
-            #         break
-            #     else:
-            params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
 
+
+            for s in boundariesBug:
+                if session == s[0]:
+                    params[animal, session]["boundaries"] = s[1]
+                    break
+                else:
+                    params[animal, session]["boundaries"] = [rightBoundaryPeak[animal, session] - border, leftBoundaryPeak[animal, session] + border]
+            
             # Compute or pickle run/stay mask
             maskpicklePath = root+os.sep+animal+os.sep+"Experiments"+os.sep+session+os.sep+"Analysis"+os.sep+"mask.p"
             if os.path.exists(maskpicklePath) and (not redoMask):
                 binMask[animal, session] = get_from_pickle(root, animal, session, name="mask.p")
             else:
-                if animal + " " + session in runstaysepbug:
+                if session in runstaysepbug:
                     septhreshold = 0.0004
                 else:
                     septhreshold = 0.0002
@@ -2192,7 +2194,7 @@ def processData(arr, root, ID, sessionIN, index, buggedSessions, redoCompute=Fal
 
         arr[index] += (1/len(sessionList))
         clear_output(wait=True)
-        update_progress(arr[:], root)
+        # update_progress(arr[:], root)
 
 
 def checkHealth(arr, root, ID, sessionIN, index, buggedSessions, redoFig=False, printFigs=False, redoMask=False):
