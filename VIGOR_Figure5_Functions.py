@@ -271,6 +271,7 @@ def confidence_ellipse(x, y, ax=None, n_std=2.0, color='k'):
     ellipse_fill.set_transform(transf + ax.transData)
     return ax.add_patch(ellipse_contour), ax.add_patch(ellipse_fill)
 
+
 def PCA_individuals_plot(score, labels, explained_variance_ratio=['', ''], ax=None):
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(2, 2))
@@ -306,6 +307,7 @@ def PCA_individuals_plot(score, labels, explained_variance_ratio=['', ''], ax=No
 
     ax.set_xlim(-6, 6)
     ax.set_ylim(-6, 6)
+    space_axes(ax, x_ratio_right=0)
 
 
 def PCA_variables_plot(coeff, names='', explained_variance_ratio=['', ''], ax=None):
