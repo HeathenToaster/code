@@ -912,16 +912,23 @@ def dict_to_xticklabels(d, labels=['αt', 'αR', 'γt', 'γR']):
     return result
 
 
-def exact_mc_perm_test(x, y, nmc=10000):
+def exact_mc_perm_test(x, y, nmc=10000, return_shuffled=False):
     n = len(x)
     k = 0
     diff = np.abs(np.mean(x) - np.mean(y))
     z = np.concatenate([x, y])
+
+    s = []
     for j in range(nmc):
         np.random.shuffle(z)
         k += diff <= np.abs(np.mean(z[:n]) - np.mean(z[n:]))
+        s.append(np.abs(np.mean(z[:n]) - np.mean(z[n:])))
     p_value = k / nmc
-    return p_value
+
+    if return_shuffled:
+        return p_value, s, diff
+    else:
+        return p_value
 
 
 def test_all_keys_between_themselves(losses, keys, ax=None):

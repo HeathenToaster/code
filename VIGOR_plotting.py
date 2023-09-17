@@ -49,14 +49,14 @@ def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_z
     cb.ax.yaxis.set_tick_params(size=0)
 
 
-def space_axes(ax=None, x_ratio_left=1/30, x_ratio_right=1/30, y_ratio=1/30):
+def space_axes(ax=None, x_ratio_left=1/30, x_ratio_right=1/30, y_ratio=1/30, top_y=0):
     if ax is None:
         fig, ax = plt.subplots()
     min_x, max_x = ax.get_xlim()
     min_y, max_y = ax.get_ylim()
 
     ax.set_xlim(min_x - x_ratio_left * abs(max_x - min_x), max_x + x_ratio_right * abs(max_x - min_x))
-    ax.set_ylim(min_y - y_ratio * abs(max_y - min_y), max_y)
+    ax.set_ylim(min_y - y_ratio * abs(max_y - min_y), max_y - top_y * abs(max_y - min_y))
 
     ax.spines['left'].set_bounds(min_y, max_y)
     ax.spines['bottom'].set_bounds(min_x, max_x)
