@@ -622,3 +622,75 @@ def across_session_plot(plot, animal_list, session_list, dataLeft, dataRight, ex
             if plot == "%":
                 ax.plot(x, (g/a, h/b, i/c, j/d, k/e, l/f), marker='o', markersize=6, color=marker[animal][0], linestyle=marker[animal][2])
     return ax
+
+
+def stars(p, maxasterix=3):
+    if type(p) is str:
+        text = p
+    
+    else:
+        if p < .0001:
+            text = f"{0.0001:.1e}"
+        if p < .01:
+            text = f"{p:.1e}"
+        elif p <= .06:
+            text = f"{p:.3f}"
+        else:
+            text = f"{p:.2f}"
+        # text = ''
+        # sig = .05
+
+        # while p < sig:
+        #     text += '*'
+        #     sig /= 10.
+
+        #     if maxasterix and len(text) == maxasterix:
+        #         break
+
+        # if len(text) == 0:
+        #     text = f'n.s. $p$ = {p:.3f}'
+
+    return text
+
+
+def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh=.05, fs=5, maxasterix=3):
+    """ 
+    Annotate barplot with p-values.
+
+    :param num1: number of left bar to put bracket over
+    :param num2: number of right bar to put bracket over
+    :param data: string to write or number for generating asterixes
+    :param center: centers of all bars (like plt.bar() input)
+    :param height: heights of all bars (like plt.bar() input)
+    :param yerr: yerrs of all bars (like plt.bar() input)
+    :param dh: height offset over bar / bar + yerr in axes coordinates (0 to 1)
+    :param barh: bar height in axes coordinates (0 to 1)
+    :param fs: font size
+    :param maxasterix: maximum number of asterixes to write (for very small p-values)
+    """
+
+    text = stars(data, maxasterix)
+
+    lx, ly = center[num1], height[num1]
+    rx, ry = center[num2], height[num2]
+
+    ax_y0, ax_y1 = ax.get_ylim()
+    dh *= (ax_y1 - ax_y0)
+    barh *= (ax_y1 - ax_y0)
+
+    y = max(ly, ry) + dh
+
+    barx = [lx, lx, rx, rx]
+    bary = [y, y+barh, y+barh, y]
+    mid = ((lx+rx)/2, y+barh)
+
+    ax.plot(barx, bary, c='black')
+
+    kwargs = dict(ha='center', va='bottom')
+    if fs is not None:
+        if '*' in text:
+            kwargs['fontsize'] = 7
+        kwargs['fontsize'] = fs
+
+    ax.text(*mid, text, **kwargs)
+
