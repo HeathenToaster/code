@@ -653,7 +653,7 @@ def stars(p, maxasterix=3):
     return text
 
 
-def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh=.05, fs=5, maxasterix=3):
+def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh=.05, textbarh=.05, fs=5, maxasterix=3):
     """ 
     Annotate barplot with p-values.
 
@@ -675,22 +675,21 @@ def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh
     rx, ry = center[num2], height[num2]
 
     ax_y0, ax_y1 = ax.get_ylim()
-    dh *= (ax_y1 - ax_y0)
-    barh *= (ax_y1 - ax_y0)
+    dh *= abs(ax_y1 - ax_y0)
+    barh *= abs(ax_y1 - ax_y0)
 
     y = max(ly, ry) + dh
 
     barx = [lx, lx, rx, rx]
     bary = [y, y+barh, y+barh, y]
-    mid = ((lx+rx)/2, y+barh)
+    mid = ((lx+rx)/2, y+textbarh)
 
     ax.plot(barx, bary, c='black')
 
-    kwargs = dict(ha='center', va='bottom')
+    kwargs = dict(ha='center', va='bottom' if barh > 0 else 'top')
     if fs is not None:
         if '*' in text:
             kwargs['fontsize'] = 7
         kwargs['fontsize'] = fs
 
     ax.text(*mid, text, **kwargs)
-
