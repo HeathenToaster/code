@@ -68,7 +68,7 @@ for index, animal in enumerate(animalList):
 
 
 
-def compute_ICC(var, animalList=animalList, bootstrap=False, n_samples=1000):
+def compute_ICC(var, animalList=animalList, bootstrap=False, n_samples=10000):
     expected_values = {cond: np.mean([var[animal][cond] for animal in animalList]) for cond in conds}
     individual_intercepts = {}
     remaining_residuals = {}
@@ -110,8 +110,8 @@ def compute_ICC(var, animalList=animalList, bootstrap=False, n_samples=1000):
         for i in range(n_samples):
             ICC_bootstrap[i] = compute_ICC(samples[i], animalList=animalList)[0]
         
-        lower_bound = np.percentile(ICC_bootstrap, 5)
-        upper_bound = np.percentile(ICC_bootstrap, 95)
+        lower_bound = np.percentile(ICC_bootstrap, 2.5)
+        upper_bound = np.percentile(ICC_bootstrap, 97.5)
 
     return ICC_pop, ICC_indiv, [lower_bound, upper_bound, ICC_bootstrap]
         
@@ -167,7 +167,7 @@ def explain_ICC(noise=0, ax=None):
         violin_parts = axs[1].violinplot(positions=[.1], 
                         dataset=[ICC_bootstrap],
                         widths=.05, showextrema=False, 
-                        quantiles=[0.05, 0.95])
+                        quantiles=[0.025, 0.975])
         
         for vp in violin_parts['bodies']:
             vp.set_facecolor('lightgray')
@@ -247,10 +247,10 @@ def confidence_ellipse(x, y, ax=None, n_std=2.0, color='k'):
 
     # contour
     ellipse_contour = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2,
-                        linewidth=1, edgecolor=color, color=color, fill=False, alpha=.8, zorder=1)
+                        linewidth=1, color=color, fill=False, alpha=.8, zorder=1)
     # fill
     ellipse_fill = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2,
-                        linewidth=1, edgecolor=color, color=color, fill=True, alpha=0.1, zorder=0)
+                        linewidth=1, color=color, fill=True, alpha=0.1, zorder=0)
 
     # Calculating the standard deviation of x from
     # the squareroot of the variance and multiplying

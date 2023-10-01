@@ -9,6 +9,55 @@ import dabest
 import pandas as pd
 
 from VIGOR_utils import *
+from VIGOR_MODELS_Functions import *
+
+animalList = ['RatF00', 'RatF01', 'RatF02', 'RatM00', 'RatM01', 'RatM02', 
+            'RatF32', 'RatF33', 'RatM31', 'RatM32', 'RatF42', 'RatM40', 'RatM43', 'RatM53', 'RatM54']
+
+def permutation_test_distances(var, shifty=0, h='bottom', dhs=[-0.05, -0.15], barh=-.05, ax=None, num_permutations=10000):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+
+    data = np.array([[var[animal][cond] for cond in ['60', '90', '120']] for animal in animalList])
+    p_value_60_90 = exact_mc_perm_test(data[:, 0], data[:, 1])
+    p_value_60_120 = exact_mc_perm_test(data[:, 0], data[:, 2])
+    p_value_90_120 = exact_mc_perm_test(data[:, 1], data[:, 2])
+
+    print(f'p_value_60_90: {p_value_60_90}', f'p_value_60_120: {p_value_60_120}', f'p_value_90_120: {p_value_90_120}')
+    if h is 'bottom':
+        h = np.min([np.min(data[:, 0]), np.min(data[:, 1]), np.min(data[:, 2])])
+        h1, h2, h3 = [h, h, h]
+    elif h is 'top':
+        h = np.max([np.max(data[:, 0]), np.max(data[:, 1]), np.max(data[:, 2])])
+        h1, h2, h3 = [h, h, h]
+    else:
+        h1, h2, h3 = h
+    barplot_annotate_brackets(ax, 0, 1, stars(p_value_60_90), [0, 1, 2], [h1, h1, h1], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 0, 2, stars(p_value_60_120), [0, 1, 2], [h2, h2, h2], dh=dhs[1]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 1, 2, stars(p_value_90_120), [0, 1, 2], [h3, h3, h3], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
+
+
+def permutation_test_vbelt(var, shifty=0, h='bottom', dhs=[-0.05, -0.15], barh=-.05, ax=None, num_permutations=10000):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+
+    data = np.array([[var[animal][cond] for cond in ['20', '2', 'rev20']] for animal in animalList])
+    p_value_20_2 = exact_mc_perm_test(data[:, 0], data[:, 1])
+    p_value_2_rev20 = exact_mc_perm_test(data[:, 0], data[:, 2])
+    p_value_20_rev20 = exact_mc_perm_test(data[:, 1], data[:, 2])
+
+    print(f'p_value_20_0: {p_value_20_2}', f'p_value_0_rev20: {p_value_2_rev20}', f'p_value_20_rev20: {p_value_20_rev20}')
+    if h is None:
+        h = np.min([np.min(data[:, 0]), np.min(data[:, 1]), np.min(data[:, 2])])
+        h1, h2, h3 = [h, h, h]
+    elif h is 'top':
+        h = np.max([np.max(data[:, 0]), np.max(data[:, 1]), np.max(data[:, 2])])
+        h1, h2, h3 = [h, h, h]
+    else:
+        h1, h2, h3 = h
+    barplot_annotate_brackets(ax, 0, 1, stars(p_value_20_2), [0, 2, 4], [h1, h1, h1], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 0, 2, stars(p_value_2_rev20), [0, 2, 4], [h2, h2, h2], dh=dhs[1]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 1, 2, stars(p_value_20_rev20), [0, 2, 4], [h3, h3, h3], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
 
 
 def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_zero=None, txt=True, cmap='autumn', labels=['Low', '0', 'High']):
@@ -45,7 +94,7 @@ def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_z
 
 
     cb.outline.set_edgecolor(None)
-    cb.set_label(label, labelpad=labelpad,y=y, rotation=0, fontsize=7)
+    cb.set_label(label, labelpad=labelpad, y=y, rotation=0, fontsize=7)
     cb.ax.yaxis.set_tick_params(size=0)
 
 
@@ -630,8 +679,8 @@ def stars(p, maxasterix=3):
     
     else:
         if p < .0001:
-            text = f"{0.0001:.1e}"
-        if p < .01:
+            text = f"<0.0001"
+        elif p < .01:
             text = f"{p:.1e}"
         elif p <= .06:
             text = f"{p:.3f}"
@@ -653,7 +702,7 @@ def stars(p, maxasterix=3):
     return text
 
 
-def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh=.05, textbarh=.05, fs=5, maxasterix=3):
+def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh=.05, fs=5, maxasterix=3):
     """ 
     Annotate barplot with p-values.
 
@@ -675,18 +724,27 @@ def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh
     rx, ry = center[num2], height[num2]
 
     ax_y0, ax_y1 = ax.get_ylim()
-    dh *= abs(ax_y1 - ax_y0)
-    barh *= abs(ax_y1 - ax_y0)
+    dh *= (ax_y1 - ax_y0)
+    barh *= (ax_y1 - ax_y0)
 
-    y = max(ly, ry) + dh
+    if ly > 0 and ry > 0:
+        y = max(ly, ry) + dh
+
+    else:
+        y = min(ly, ry) + dh
+
+    mid = ((lx+rx)/2, y+barh*1.25)
+    if dh < 0:
+        kwargs = dict(ha='center', va='top')
+    else:
+        kwargs = dict(ha='center', va='bottom')
 
     barx = [lx, lx, rx, rx]
     bary = [y, y+barh, y+barh, y]
-    mid = ((lx+rx)/2, y+textbarh)
+
 
     ax.plot(barx, bary, c='black')
 
-    kwargs = dict(ha='center', va='bottom' if barh > 0 else 'top')
     if fs is not None:
         if '*' in text:
             kwargs['fontsize'] = 7
