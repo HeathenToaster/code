@@ -7,6 +7,7 @@ import warnings
 from scipy import stats
 import dabest
 import pandas as pd
+from sklearn.neighbors import KernelDensity
 
 from VIGOR_utils import *
 from VIGOR_MODELS_Functions import *
@@ -14,7 +15,7 @@ from VIGOR_MODELS_Functions import *
 animalList = ['RatF00', 'RatF01', 'RatF02', 'RatM00', 'RatM01', 'RatM02', 
             'RatF32', 'RatF33', 'RatM31', 'RatM32', 'RatF42', 'RatM40', 'RatM43', 'RatM53', 'RatM54']
 
-def permutation_test_distances(var, shifty=0, h='bottom', dhs=[-0.05, -0.15], barh=-.05, ax=None, num_permutations=10000):
+def permutation_test_distances(var, shifty=0, h='top', dhs=[0.05, 0.2], barh=.05, ax=None, num_permutations=10000):
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
@@ -37,7 +38,7 @@ def permutation_test_distances(var, shifty=0, h='bottom', dhs=[-0.05, -0.15], ba
     barplot_annotate_brackets(ax, 1, 2, stars(p_value_90_120), [0, 1, 2], [h3, h3, h3], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
 
 
-def permutation_test_vbelt(var, shifty=0, h='bottom', dhs=[-0.05, -0.15], barh=-.05, ax=None, num_permutations=10000):
+def permutation_test_vbelt(var, shifty=0, h='top', dhs=[0.05, 0.2], barh=.05, ax=None, num_permutations=10000):
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
@@ -678,14 +679,14 @@ def stars(p, maxasterix=3):
         text = p
     
     else:
-        if p < .0001:
-            text = f"<0.0001"
+        if p < .001:
+            text = f"$p$<0.001"
         elif p < .01:
-            text = f"{p:.1e}"
+            text = f"$p$={p:.1e}"
         elif p <= .06:
-            text = f"{p:.3f}"
+            text = f"$p$={p:.3f}"
         else:
-            text = f"{p:.2f}"
+            text = f"$p$={p:.2f}"
         # text = ''
         # sig = .05
 
@@ -743,7 +744,7 @@ def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh
     bary = [y, y+barh, y+barh, y]
 
 
-    ax.plot(barx, bary, c='black')
+    ax.plot(barx, bary, c='black', lw=0.5)
 
     if fs is not None:
         if '*' in text:
@@ -751,3 +752,21 @@ def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh
         kwargs['fontsize'] = fs
 
     ax.text(*mid, text, **kwargs)
+
+
+def plot_kde(data, bandwidth=1, ax=None, color='k', xx=[-4, 4]):
+
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+
+    data = np.array(data).reshape(-1, 1)
+    kde = KernelDensity(bandwidth=bandwidth, kernel='gaussian')
+    kde.fit(data)
+
+    # Compute log density scores
+    xx = np.linspace(xx[0], xx[1], 1000).reshape(-1, 1)
+    log_densities = kde.score_samples(xx)
+    densities = np.exp(log_densities)
+    
+    ax.plot(xx, densities, color=color, lw=1, alpha=0.8)
+    ax.fill_between(xx.flatten(), densities, color=color, alpha=0.1, lw=0)
