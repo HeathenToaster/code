@@ -4280,16 +4280,6 @@ def test_all_conds_between_themselves(conds, vars, ax=None):
                     c += 0.1
 
 
-def dict_to_xticklabels(d):
-    """convert dict keys to xticklabels for ablation plots"""
-    allkeys = list(d.keys())
-    conv = lambda x: "-" if x else "+"
-    result = [r"$\alpha'$"+"\n"+r"$\gamma'$"+"\n"+r"$\alpha''$"+"\n"+r"$\gamma''$"]
-    for i in allkeys:
-        result.append(f'{chr(10).join([conv(j) for j in i])}')
-    return result
-
-
 def test_all_keys_between_themselves(losses, keys, ax=None):
     """dirty stats to test all conditions against each other, but with keys"""
     if ax is None: ax = plt.gca()

@@ -15,14 +15,21 @@ from VIGOR_MODELS_Functions import *
 animalList = ['RatF00', 'RatF01', 'RatF02', 'RatM00', 'RatM01', 'RatM02', 
             'RatF32', 'RatF33', 'RatM31', 'RatM32', 'RatF42', 'RatM40', 'RatM43', 'RatM53', 'RatM54']
 
+
 def permutation_test_distances(var, shifty=0, h='top', dhs=[0.05, 0.2], barh=.05, ax=None, num_permutations=10000):
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
     data = np.array([[var[animal][cond] for cond in ['60', '90', '120']] for animal in animalList])
-    p_value_60_90 = exact_mc_perm_test(data[:, 0], data[:, 1])
-    p_value_60_120 = exact_mc_perm_test(data[:, 0], data[:, 2])
-    p_value_90_120 = exact_mc_perm_test(data[:, 1], data[:, 2])
+    p_value_60_90 = exact_mc_perm_paired_test(data[:, 0], data[:, 1])
+    p_value_60_120 = exact_mc_perm_paired_test(data[:, 0], data[:, 2])
+    p_value_90_120 = exact_mc_perm_paired_test(data[:, 1], data[:, 2])
+
+    # p_value_60_90 = stats.wilcoxon(data[:, 0], data[:, 1])[1]
+    # p_value_60_120 = stats.wilcoxon(data[:, 0], data[:, 2])[1]
+    # p_value_90_120 = stats.wilcoxon(data[:, 1], data[:, 2])[1]
+
+
 
     print(f'p_value_60_90: {p_value_60_90}', f'p_value_60_120: {p_value_60_120}', f'p_value_90_120: {p_value_90_120}')
     if h is 'bottom':
@@ -38,14 +45,18 @@ def permutation_test_distances(var, shifty=0, h='top', dhs=[0.05, 0.2], barh=.05
     barplot_annotate_brackets(ax, 1, 2, stars(p_value_90_120), [0, 1, 2], [h3, h3, h3], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
 
 
-def permutation_test_vbelt(var, shifty=0, h='top', dhs=[0.05, 0.2], barh=.05, ax=None, num_permutations=10000):
+def permutation_test_vbelt(var, shifty=0, h='top', dhs=[0.05, 0.2], xs=[0, 2, 4], barh=.05, ax=None, num_permutations=10000):
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
     data = np.array([[var[animal][cond] for cond in ['20', '2', 'rev20']] for animal in animalList])
-    p_value_20_2 = exact_mc_perm_test(data[:, 0], data[:, 1])
-    p_value_2_rev20 = exact_mc_perm_test(data[:, 0], data[:, 2])
-    p_value_20_rev20 = exact_mc_perm_test(data[:, 1], data[:, 2])
+    p_value_20_2 = exact_mc_perm_paired_test(data[:, 0], data[:, 1])
+    p_value_2_rev20 = exact_mc_perm_paired_test(data[:, 1], data[:, 2])
+    p_value_20_rev20 = exact_mc_perm_paired_test(data[:, 0], data[:, 2])
+
+    # p_value_20_2 = stats.wilcoxon(data[:, 0], data[:, 1])[1]
+    # p_value_2_rev20 = stats.wilcoxon(data[:, 1], data[:, 2])[1]
+    # p_value_20_rev20 = stats.wilcoxon(data[:, 0], data[:, 2])[1]
 
     print(f'p_value_20_0: {p_value_20_2}', f'p_value_0_rev20: {p_value_2_rev20}', f'p_value_20_rev20: {p_value_20_rev20}')
     if h is None:
@@ -56,48 +67,125 @@ def permutation_test_vbelt(var, shifty=0, h='top', dhs=[0.05, 0.2], barh=.05, ax
         h1, h2, h3 = [h, h, h]
     else:
         h1, h2, h3 = h
-    barplot_annotate_brackets(ax, 0, 1, stars(p_value_20_2), [0, 2, 4], [h1, h1, h1], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
-    barplot_annotate_brackets(ax, 0, 2, stars(p_value_2_rev20), [0, 2, 4], [h2, h2, h2], dh=dhs[1]+shifty, barh=barh, maxasterix=None)
-    barplot_annotate_brackets(ax, 1, 2, stars(p_value_20_rev20), [0, 2, 4], [h3, h3, h3], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 0, 1, stars(p_value_20_2), xs, [h1, h1, h1], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 1, 2, stars(p_value_2_rev20), xs, [h2, h2, h2], dh=dhs[0]+shifty, barh=barh, maxasterix=None)
+    barplot_annotate_brackets(ax, 0, 2, stars(p_value_20_rev20), xs, [h3, h3, h3], dh=dhs[1]+shifty, barh=barh, maxasterix=None)
 
 
-def plot_colorbar(ax=None, fig=None, label='label', y=1.35, labelpad=-17, show_zero=None, txt=True, cmap='autumn', labels=['Low', '0', 'High']):
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(0.5, 0.5))
-    if fig is None:
-        fig = plt.gcf()
+def letter_on_subplot(ax, letter, x_rel=-0.2, y_rel=1.15, fs=7):
+    ax.annotate(letter, xy=(x_rel, y_rel), xycoords='axes fraction',
+                fontsize=fs, fontweight='bold', va='top')
 
-    ax.xaxis.set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+def zoomingBox(fig, main_ax, roi, zoom_ax, color='k', linewidth=.5, roiKwargs={}, arrowKwargs={}, dstForced=None):
+    '''
+    Create a zooming effect between two subplots using a zooming rectangle.
+
+    Parameters:
+    - fig (matplotlib.figure.Figure): The figure containing the subplots.
+    - main_ax (matplotlib.axes._axes.Axes): The main subplot where the zooming rectangle will be drawn.
+    - roi (list): The coordinates of the zooming rectangle in the form [x_min, x_max, y_min, y_max].
+    - zoom_ax (matplotlib.axes._axes.Axes): The subplot where the zoomed-in content will be displayed.
+    - color (str, optional): The color of the zooming rectangle and arrows.
+    - linewidth (float, optional): The linewidth of the zooming rectangle and arrows. 
+    - roiKwargs (dict, optional): Additional keyword arguments for customizing the zooming rectangle.
+    - arrowKwargs (dict, optional): Additional keyword arguments for customizing the arrows.
+    - dstForced (list, optional): A list containing the forced destination coordinates for the arrows.
+
+    Returns:
+    None
+
+    Example:
+    fig, axs = plt.subplots(2, 2)
+    axs[1,1].plot(np.random.rand(100))
+    zoomingBox(fig=fig, main_ax=axs[1,1], roi=[40,60,0.1,0.9], zoom_ax=axs[0,0], dstForced=[[0.038, 0.551], [0.479, 0.983]])
+    '''
+
+    # that's a hack 
+    fig.canvas.draw()
+    bounds = [_ax.get_position().bounds for _ax in fig.axes]
+
+
+
+    main_ax.plot([roi[0],roi[1],roi[1],roi[0],roi[0]], [roi[2],roi[2],roi[3],roi[3],roi[2]], lw=linewidth, ls='--', color=color)
+    # zoom_ax.plot([roi[0],roi[1],roi[1],roi[0],roi[0]], [roi[2],roi[2],roi[3],roi[3],roi[2]], lw=linewidth, ls='--', color=color)
+    srcCorners = [[roi[0],roi[2]], [roi[0],roi[3]], [roi[1],roi[2]], [roi[1],roi[3]]]
+    dstCorners = zoom_ax.get_position().corners()
+
+    srcBB = main_ax.get_position()
+    dstBB = zoom_ax.get_position()
+    if (dstBB.min[0]>srcBB.max[0] and dstBB.max[1]<srcBB.min[1]) or (dstBB.max[0]<srcBB.min[0] and dstBB.min[1]>srcBB.max[1]):
+        src = [0, 3]; dst = [0, 3]
+    elif (dstBB.max[0]<srcBB.min[0] and dstBB.max[1]<srcBB.min[1]) or (dstBB.min[0]>srcBB.max[0] and dstBB.min[1]>srcBB.max[1]):
+        src = [1, 2]; dst = [1, 2]
+    elif dstBB.max[1] < srcBB.min[1]:
+        src = [0, 2]; dst = [1, 3]
+    elif dstBB.min[1] > srcBB.max[1]:
+        src = [1, 3]; dst = [0, 2]
+    elif dstBB.max[0] < srcBB.min[0]:
+        src = [0, 1]; dst = [2, 3]
+    elif dstBB.min[0] > srcBB.max[0]:
+        src = [2, 3]; dst = [0, 1]
+
+    arrowKwargs = dict([('arrowstyle','-'), ('linestyle', 'dashed'), ('color',color), ('linewidth',linewidth), ('shrinkA',0), ('shrinkB',0)] + list(arrowKwargs.items()))
+    
+    if dstForced is not None:
+        for k in range(2):
+            main_ax.annotate('', xy=dstForced[k], xytext=srcCorners[src[k]], xycoords='figure fraction', textcoords='data', arrowprops=arrowKwargs)
+    else:
+        for k in range(2):
+            main_ax.annotate('', xy=dstCorners[dst[k]], xytext=srcCorners[src[k]], xycoords='figure fraction', textcoords='data', arrowprops=arrowKwargs)
+
+    # that's a hack
+    for i, ax in enumerate(fig.axes):
+        ax.set_position(bounds[i])
+    fig.canvas.draw()
+
+
+def plot_colorbar(ax_input=None, x=0, y=0, width=.1, height=.1,
+                  label='label', y_label=1.35, labelpad=-17, show_zero=None,
+                  txt=True, cmap='autumn', labels=['Low', '0', 'High']):
+
+    if ax_input is None:
+        fig, ax_input = plt.subplots(figsize=(0.5, 0.5))
+
+    fig = ax_input.get_figure()
+    position = ax_input.get_position()
+    cax = ax_input.figure.add_axes([position.x0 + x * position.width,
+                              position.y0 + y * position.height,
+                              width * position.width,
+                              height * position.height])
+
+    cax.xaxis.set_visible(False)
+    cax.spines['left'].set_visible(False)
+    cax.spines['bottom'].set_visible(False)
+    cax.spines['top'].set_visible(False)
+    cax.spines['right'].set_visible(False)
 
     N = 4
     c = np.arange(1, 100*N + 1)
     cmap_ = plt.get_cmap(cmap, 100*N)
-    dummy_ax = ax.scatter(c, c, c=c, cmap=cmap_)
-    ax.cla()
+    dummy_ax = cax.scatter(c, c, c=c, cmap=cmap_)
+    cax.cla()
 
 
     shift = 50
     if show_zero is not None:
-        cb=fig.colorbar(dummy_ax, cax=ax, ticks=[np.min(c)+shift, show_zero, np.max(c)-shift])
+        cb=fig.colorbar(dummy_ax, ax=ax_input, cax=cax, ticks=[np.min(c)+shift, show_zero, np.max(c)-shift])
         cb.ax.set_yticklabels([labels[0], labels[1], labels[2]], rotation=0, fontsize=5)
-        ax.axhline(show_zero, color='k', lw=0.5, ls='--')
+        cax.axhline(show_zero, color='k', lw=0.5, ls='--')
 
     else:
-        cb=fig.colorbar(dummy_ax, cax=ax, ticks=[np.min(c)+shift, np.max(c)-shift])
+        cb=fig.colorbar(dummy_ax, ax=ax_input, cax=cax, ticks=[np.min(c)+shift, np.max(c)-shift])
         cb.ax.set_yticklabels([labels[0], labels[2]], rotation=0, fontsize=5)
 
     if not txt:
         cb.ax.set_yticklabels([])
 
 
-    cb.outline.set_edgecolor(None)
-    cb.set_label(label, labelpad=labelpad, y=y, rotation=0, fontsize=7)
+    cb.outline.set_edgecolor('k')
+    cb.outline.set_linewidth(0.5)
+    cb.set_label(label, labelpad=labelpad, y=y_label, rotation=0, fontsize=7)
     cb.ax.yaxis.set_tick_params(size=0)
-
 
 def space_axes(ax=None, x_ratio_left=1/30, x_ratio_right=1/30, y_ratio=1/30, top_y=0):
     if ax is None:
@@ -115,6 +203,22 @@ def space_axes(ax=None, x_ratio_left=1/30, x_ratio_right=1/30, y_ratio=1/30, top
     ax.spines['bottom'].set_bounds(min_x, max_x)
 
 
+def annotation_d_vbelt(ax=None, miny=0):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+
+    y = np.diff(sorted([ax.get_ylim()[0], miny]))
+    dy = miny - y 
+
+    line_y = (miny-dy) * 0.8
+    ax.plot([0, 2], [miny-line_y, miny-line_y], color='k', lw=.75, zorder=1)
+    ax.plot([3, 7], [miny-line_y, miny-line_y], color='k', lw=.75, zorder=1)
+
+    text_y = (miny-dy) * 0.3
+    ax.annotate(r'$d$' + ' (cm)', xy=(1, miny-text_y), xytext=(1, miny-text_y), ha='center', va='center', fontsize=6)
+    ax.annotate(r'$v_{\mathrm{belt}}$' + ' (cm/s)', xy=(5, miny-text_y), xytext=(5, miny-text_y), ha='center', va='center', fontsize=6)
+
+
 # save animal plot as png
 def save_sessionplot_as_png(root, animal, session, filename,
                             dpi='figure', transparent=True, background='auto'):
@@ -125,6 +229,30 @@ def save_sessionplot_as_png(root, animal, session, filename,
     filePath = os.path.join(folderPath, filename)
     plt.savefig(filePath, dpi=dpi, transparent=transparent,
                 facecolor=background, edgecolor=background)
+
+
+def plot_shuffling(shuffles=np.random.randn(1000), observed=1, ylim=[-3, 3], xlim=[0, .5], ylabel=' ', ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+
+    # half violin
+    violin_parts = ax.violinplot(shuffles, positions=[0], showextrema=False, widths=0.5)
+    for pc in violin_parts['bodies']:
+
+        pc.set_facecolor('gray')
+        pc.set_edgecolor('gray')
+        pc.set_alpha(0.25)
+        pc.set_linewidth(0)
+
+    # observed
+    ax.axhline(observed, 0, .75, color='gray')
+
+    ax.set_ylim(ylim)
+    ax.set_ylabel(ylabel)
+    ax.set_xlim(xlim)
+    ax.set_xticks([])
+    ax.spines['bottom'].set_visible(False)
+    space_axes(ax, x_ratio_left=.0)
 
 
 # plot old boundaries run stay

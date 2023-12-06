@@ -902,7 +902,7 @@ def test_all_conds_between_themselves(conds, vars, ax=None):
                     c += 0.1
 
 
-def dict_to_xticklabels(d, labels=['αt', 'αR', 'γt', 'γR']):
+def dict_to_xticklabels(d, labels=['$\\alpha_{\mathrm{t}}$', '$\\gamma_{\mathrm{t}}$', '$\\alpha_R$', '$\\gamma_R$']):
     """convert dict keys to xticklabels for ablation plots"""
     allkeys = list(d.keys())
     conv = lambda x: "-" if x else "+"
@@ -915,20 +915,45 @@ def dict_to_xticklabels(d, labels=['αt', 'αR', 'γt', 'γR']):
 def exact_mc_perm_test(x, y, nmc=10000, return_shuffled=False):
     n = len(x)
     k = 0
-    diff = np.abs(np.mean(x) - np.mean(y))
+    diff = np.abs(np.median(x) - np.median(y))
     z = np.concatenate([x, y])
 
     s = []
     for j in range(nmc):
         np.random.shuffle(z)
-        k += diff <= np.abs(np.mean(z[:n]) - np.mean(z[n:]))
-        s.append(np.abs(np.mean(z[:n]) - np.mean(z[n:])))
+        k += diff <= np.abs(np.median(z[:n]) - np.median(z[n:]))
+        s.append(np.abs(np.median(z[:n]) - np.median(z[n:])))
     p_value = k / nmc
 
     if return_shuffled:
         return p_value, s, diff
     else:
         return p_value
+
+
+def exact_mc_perm_paired_test(x, y, nmc=10000, return_shuffled=False):
+
+    def effect(x, y): # paired median difference
+        return np.abs(np.median(x) - np.median(y))
+    
+    k = 0
+    obs = effect(x, y)
+
+    def random_swap(x, y):
+        n = len(x)
+        k = x.shape[-1] if x.ndim > 1 else 1
+        swaps = (np.random.random(n) < 0.5).repeat(k).reshape(n, k)
+        x_ = np.select([swaps, ~swaps], [x.reshape(n, k), y.reshape(n, k)])
+        y_ = np.select([~swaps, swaps], [x.reshape(n, k), y.reshape(n, k)])
+        return x_, y_
+
+    for _ in range(nmc):
+        xs_, ys_ = random_swap(x, y)
+        if effect(xs_, ys_) >= obs:
+            k += 1
+    
+    p_value = k / nmc
+    return p_value
 
 
 def test_all_keys_between_themselves(losses, keys, ax=None):
