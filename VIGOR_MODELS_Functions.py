@@ -1437,22 +1437,26 @@ def intact_vs_lesion_Zscore(ax, num1, num2, data, center, height, yerr=None, dh=
      rotation=-90, fontsize=fs)
 
 
-def regression_permutation(var, experiment='dist'):
+def regression_permutation(var, dist_or_tm='dist'):
     ''' regression with permutation test
     var: parameter to test (e.g., alpha_0)
-    experiment: 'dist' or 'vbelt'
+    dist_or_tm: 'dist' or 'tm'
     '''
+
+    intact = ['RatF00', 'RatF01', 'RatF02', 'RatM00', 'RatM01', 'RatM02', 
+            'RatF32', 'RatF33', 'RatM31', 'RatM32', 'RatF42', 'RatM40', 'RatM43', 'RatM53', 'RatM54']
+
     
     df = pd.DataFrame(columns=['animal', 'parameter', 'cond'])
     _ = {"60": .29, "90": .62, "120": .94, 
          "20": 20, "10": 10, "2": 0, "rev10": -10, "rev20": -20}
-    for animal in animalList:
-        if experiment == 'dist':
+    for animal in intact:
+        if dist_or_tm == 'dist':
             conds = ["60", "90", "120"]
-        elif experiment == 'vbelt':
+        elif dist_or_tm == 'tm':
             conds = ["20", "10", "2", "rev10", "rev20"]
         else:
-            raise ValueError("experiment must be 'dist' or 'vbelt'")
+            raise ValueError("experiment must be 'dist' or 'tm'")
         for cond in conds:
             x = float(_[cond])
             y = var[animal][cond]
