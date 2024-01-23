@@ -7,7 +7,7 @@ import matplotlib.patches as patches
 from scipy import stats
 from scipy.integrate import simps
 from scipy.interpolate import interp1d
-from scipy.optimize import minimize
+from scipy.optimize import minimize, curve_fit
 
 from VIGOR_utils import *
 
@@ -1435,4 +1435,59 @@ def intact_vs_lesion_Zscore(ax, num1, num2, data, center, height, yerr=None, dh=
     ax.text(*mid, text,
     #  **kwargs, 
      rotation=-90, fontsize=fs)
+
+
+def regression_permutation(var, experiment='dist'):
+    ''' regression with permutation test
+    var: parameter to test (e.g., alpha_0)
+    experiment: 'dist' or 'vbelt'
+    '''
+    
+    df = pd.DataFrame(columns=['animal', 'parameter', 'cond'])
+    _ = {"60": .29, "90": .62, "120": .94, 
+         "20": 20, "10": 10, "2": 0, "rev10": -10, "rev20": -20}
+    for animal in animalList:
+        if experiment == 'dist':
+            conds = ["60", "90", "120"]
+        elif experiment == 'vbelt':
+            conds = ["20", "10", "2", "rev10", "rev20"]
+        else:
+            raise ValueError("experiment must be 'dist' or 'vbelt'")
+        for cond in conds:
+            x = float(_[cond])
+            y = var[animal][cond]
+            df = df.append({"animal": animal, "parameter": y, 'cond': x}, ignore_index=True)
+
+    x = df.cond
+    y = df.parameter
+
+    # fit with np.polyfit
+    f = lambda x, *p: np.polyval(p, x)
+    p, cov = curve_fit(f, x, y, [1, 1])
+
+    # shuffle to get p-value
+    observed_slope = p[0]
+    slope_sign = np.sign(observed_slope)
+    num_iterations = 10000
+    shuffled_slopes = []
+
+    np.random.seed(0)
+    for _ in range(num_iterations):
+        shuffled_y = np.random.permutation(y)
+        p_shuffled, _ = curve_fit(f, x, shuffled_y, [1, 1])
+        shuffled_slope = p_shuffled[0]
+        shuffled_slopes.append(shuffled_slope)
+
+    # calculate the p-value
+    p_value = (np.abs(shuffled_slopes) >= np.abs(observed_slope)).mean()
+
+    # compute r
+    y_mean = np.mean(y)
+    y_pred = f(x, *p)
+    ss_total = np.sum((y - y_mean) ** 2)
+    ss_res = np.sum((y - y_pred) ** 2)
+    r_squared = 1 - (ss_res / ss_total)
+    r = np.sqrt(r_squared)
+
+    return r * slope_sign, p_value
 
