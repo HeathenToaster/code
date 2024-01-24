@@ -4306,3 +4306,24 @@ def simple_progress_bar(current, total, animal, cond, bar_length=20):
     padding = int(bar_length - len(arrow)) * ' '
     ending = '\n' if current >= .99*total else '\r'
     print(f'{animal} {cond} Progress: [{arrow}{padding}] {int(fraction*100)}%  ', end=ending)
+
+
+def multipletests_bonferroni(pvals, alpha=0.05):
+    pvals = np.asarray(pvals)
+    sorted = np.argsort(pvals)
+    pvals = np.take(pvals, sorted)
+
+    ntests = len(pvals)
+    alphacBonf = alpha / float(ntests)
+
+    # bonferroni correction, return everything <= alphacBonf, clip pvals at 1
+    reject = pvals <= alphacBonf
+    pvals_corrected = np.clip(pvals * float(ntests), 0, 1)
+
+    # reorder pvals and reject to original order of pvals
+    pvals_corrected_ = np.empty_like(pvals_corrected)
+    pvals_corrected_[sorted] = pvals_corrected
+    reject_ = np.empty_like(reject)
+    reject_[sorted] = reject
+
+    return reject_, pvals_corrected_, alphacBonf

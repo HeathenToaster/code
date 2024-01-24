@@ -871,15 +871,15 @@ def barplot_annotate_brackets(ax, num1, num2, data, center, height, dh=.05, barh
     barx = [lx, lx, rx, rx]
     bary = [y, y+barh, y+barh, y]
 
-
-    ax.plot(barx, bary, c='black', lw=0.5)
+    color = 'k' if data < 0.05 else 'grey'
+    ax.plot(barx, bary, c=color, lw=0.5)
 
     if fs is not None:
         if '*' in text:
             kwargs['fontsize'] = 7
         kwargs['fontsize'] = fs
 
-    ax.text(*mid, text, **kwargs)
+    ax.text(*mid, text, color=color, **kwargs)
 
 
 def plot_kde(data, bandwidth=1, ax=None, color='k', xx=[-4, 4]):
@@ -898,3 +898,14 @@ def plot_kde(data, bandwidth=1, ax=None, color='k', xx=[-4, 4]):
     
     ax.plot(xx, densities, color=color, lw=1, alpha=0.8)
     ax.fill_between(xx.flatten(), densities, color=color, alpha=0.1, lw=0)
+
+
+def annotate_regression(p, r, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+
+    color = 'gray' if p > 0.05 else 'k'
+    ax.annotate(f"{stars(p)}", xy=(.1, 1.), xycoords='axes fraction', 
+                fontsize=6, ha='left', va='top', color=color)
+    ax.annotate(f"$r$ = {r:.2f}", xy=(.1, .9), xycoords='axes fraction', 
+                fontsize=6, ha='left', va='top', color=color)
