@@ -808,13 +808,13 @@ def stars(p, maxasterix=3):
     
     else:
         if p < .001:
-            text = f"$p$<0.001"
+            text = f"$p$ < 0.001"
         elif p < .01:
-            text = f"$p$={p:.1e}"
+            text = f"$p$ = {p:.3f}"
         elif p <= .06:
-            text = f"$p$={p:.3f}"
+            text = f"$p$ = {p:.3f}"
         else:
-            text = f"$p$={p:.2f}"
+            text = f"$p$ = {p:.2f}"
         # text = ''
         # sig = .05
 
